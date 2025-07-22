@@ -1,7 +1,7 @@
-import { Counter, Header } from "@repo/ui";
-import { createRoot } from "react-dom/client";
-import "./style.css";
-import typescriptLogo from "/typescript.svg";
+import { Counter, Header } from '@repo/ui';
+import { createRoot } from 'react-dom/client';
+import './style.css';
+import typescriptLogo from '/typescript.svg';
 
 const App = () => {
   return (
@@ -9,6 +9,7 @@ const App = () => {
       <a href="https://vitejs.dev">
         <img src="/vite.svg" className="logo" alt="Vite logo" />
       </a>
+      <button>text</button>
       <a href="https://www.typescriptlang.org/">
         <img
           src={typescriptLogo}
@@ -24,4 +25,4 @@ const App = () => {
   );
 };
 
-createRoot(document.getElementById("app")!).render(<App />);
+createRoot(document.getElementById('app')!).render(<App />);
