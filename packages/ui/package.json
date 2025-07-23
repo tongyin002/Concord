@@ -15,11 +15,11 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@repo/oxlint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
-    "@repo/typescript-config": "workspace:*",
-    "@repo/oxlint-config": "workspace:*",
-    "oxlint": "^1.7.0",
+    "oxlint": "^1.8.0",
     "typescript": "^5.8.3"
   }
 }
