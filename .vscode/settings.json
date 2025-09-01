@@ -1,6 +1,6 @@
 {
-    "oxc.requireConfig": true,
-    "editor.formatOnPaste": false,
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "oxc.oxc-vscode"
+  "oxc.requireConfig": true,
+  "editor.formatOnPaste": false,
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
 }

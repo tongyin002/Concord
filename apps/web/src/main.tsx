@@ -1,4 +1,3 @@
-import { Counter, Header } from '@repo/ui';
 import { createRoot } from 'react-dom/client';
 import './style.css';
 import typescriptLogo from '/typescript.svg';
@@ -17,9 +16,9 @@ const App = () => {
           alt="TypeScript logo"
         />
       </a>
-      <Header title="Web" />
-      <div className="card">
-        <Counter />
+      <header></header>
+      <div className="card" onClick={() => {}}>
+        hello
       </div>
     </div>
   );

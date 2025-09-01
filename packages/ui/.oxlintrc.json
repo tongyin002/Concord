@@ -1,7 +1,0 @@
-{
-  "extends": [
-    "node_modules/@repo/oxlint-config/base.json",
-    "node_modules/@repo/oxlint-config/react.json"
-  ],
-  "ignorePatterns": ["./node_modules/**", "./dist/**", "./.turbo/**"]
-}

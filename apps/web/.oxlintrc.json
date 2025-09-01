@@ -1,7 +1,33 @@
 {
-  "extends": [
-    "node_modules/@repo/oxlint-config/base.json",
-    "node_modules/@repo/oxlint-config/react.json"
+  "plugins": ["typescript", "unicorn", "oxc", "import", "react-perf", "react"],
+  "rules": {
+    "eslint/default-case": "error",
+    "eslint/no-alert": "error",
+    "import/no-amd": "error",
+    "import/no-commonjs": "error",
+    "import/no-self-import": "error",
+    "import/no-dynamic-require": "error",
+    "import/no-cycle": [
+      "error",
+      {
+        "ignoreTypes": true
+      }
+    ],
+    "unicorn/prefer-array-find": "error",
+    "oxc/no-accumulating-spread": "error",
+    "react/no-array-index-key": "error",
+    "react-perf/jsx-no-new-function-as-prop": "error",
+    "react-perf/jsx-no-jsx-as-prop": "error",
+    "react-perf/jsx-no-new-array-as-prop": "error",
+    "react-perf/jsx-no-new-object-as-prop": "error"
+  },
+  "overrides": [
+    {
+      "files": ["*.test.ts", "*.test.tsx", "*.spec.ts"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off"
+      }
+    }
   ],
-  "ignorePatterns": ["./node_modules/**", "./dist/**", "./.turbo/**"]
+  "ignorePatterns": ["./node_modules/**", "./dist/**", "./turbo/**"]
 }
