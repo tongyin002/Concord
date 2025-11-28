@@ -5,9 +5,10 @@ node_modules
 dist
 dist-ssr
 *.local
-.env
+.env.keys
 .cache
 server/dist
 public/dist
 .vscode
 .zed
+.pnpm-store

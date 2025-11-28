@@ -1,6 +1,7 @@
 {
   "plugins": ["typescript", "unicorn", "oxc", "import", "react-perf", "react"],
   "rules": {
+    "typescript/return-await": "error",
     "eslint/default-case": "error",
     "eslint/no-alert": "error",
     "import/no-amd": "error",

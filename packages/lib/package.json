@@ -1,0 +1,25 @@
+{
+  "name": "lib",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "exports": {
+    "./auth": "./src/auth.ts",
+    "./auth-client": "./src/auth-client.ts",
+    "./zero": "./src/zero.ts",
+    "./zero-client": "./src/zero-client.ts"
+  },
+  "scripts": {
+    "dev": "npx zero-cache-dev",
+    "lint": "oxlint --type-aware"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.15.0",
+  "dependencies": {
+    "@rocicorp/zero": "^0.24.3000000000",
+    "better-auth": "^1.4.3",
+    "db": "workspace:*"
+  }
+}
