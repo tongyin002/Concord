@@ -1,10 +1,4 @@
-import {
-  Mark,
-  Node,
-  NodeSpec as ProseMirrorNodeSpec,
-  Schema,
-  SchemaSpec,
-} from 'prosemirror-model';
+import { Mark, Node, NodeSpec as ProseMirrorNodeSpec, Schema, SchemaSpec } from 'prosemirror-model';
 import 'prosemirror-view/style/prosemirror.css';
 import {
   LoroDoc,
@@ -102,16 +96,13 @@ function isLoroList(container: Container): container is LoroList {
   return container.kind() === 'List';
 }
 
-function maybeLoroBockNode(
-  container: Container
-): container is MaybeLoroBlockNode {
+function maybeLoroBockNode(container: Container): container is MaybeLoroBlockNode {
   if (container.kind() !== 'Map') return false;
 
   const map = container as LoroMap;
 
   const blockType = map.get('type');
-  if (typeof blockType !== 'string' || !(blockType in pmSchema.nodes))
-    return false;
+  if (typeof blockType !== 'string' || !(blockType in pmSchema.nodes)) return false;
 
   const blockContent = map.get('content');
   if (
@@ -154,17 +145,11 @@ function LoroTextToTextNodes(loroText: LoroText): Node[] {
         validMarksFromLoro.every((mark) => mark.isInSet(lastMarks));
 
       if (lastPmText && marksMatched) {
-        const combinedText = pmSchema.text(
-          lastPmText.text + delta.insert,
-          lastPmText.marks
-        );
+        const combinedText = pmSchema.text(lastPmText.text + delta.insert, lastPmText.marks);
         pmTexts[pmTexts.length - 1] = combinedText;
       } else {
         pmTexts.push(
-          pmSchema.text(
-            delta.insert,
-            validMarksFromLoro.length ? validMarksFromLoro : undefined
-          )
+          pmSchema.text(delta.insert, validMarksFromLoro.length ? validMarksFromLoro : undefined)
         );
       }
     } else {
@@ -173,9 +158,7 @@ function LoroTextToTextNodes(loroText: LoroText): Node[] {
   return pmTexts;
 }
 
-function createPmBlockNodeFromLoroBlockNode(
-  loroBlockNode: MaybeLoroBlockNode
-): Node {
+function createPmBlockNodeFromLoroBlockNode(loroBlockNode: MaybeLoroBlockNode): Node {
   const nodeType = loroBlockNode.get('type');
   const content = loroBlockNode.get('content');
 

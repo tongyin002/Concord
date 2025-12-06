@@ -1,0 +1,12 @@
+{
+    "$schema": "./node_modules/oxfmt/configuration_schema.json",
+    "rules": {
+        "sort-imports": "error",
+        "sort-keys": "error",
+        "sort-exports": "error",
+    },
+    "trailingComma": "es5",
+    "tabWidth": 2,
+    "semi": true,
+    "singleQuote": true,
+}

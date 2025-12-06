@@ -5,14 +5,7 @@ import { EditorView } from 'prosemirror-view';
 import 'prosemirror-view/style/prosemirror.css';
 import { keymap } from 'prosemirror-keymap';
 import { baseKeymap } from 'prosemirror-commands';
-import {
-  ContainerID,
-  LoroDoc,
-  LoroList,
-  LoroMap,
-  LoroMovableList,
-  LoroText,
-} from 'loro-crdt';
+import { ContainerID, LoroDoc, LoroList, LoroMap, LoroMovableList, LoroText } from 'loro-crdt';
 import { LoroDocToPmDoc, pmSchema } from './loroToPm';
 
 const pluginKey = new PluginKey('loro');
@@ -22,10 +15,7 @@ const docContainer = loroDoc.getMap('doc');
 docContainer.set('type', 'doc');
 
 // Use return values to get the actual attached containers
-const paragraphsList = docContainer.setContainer(
-  'content',
-  new LoroMovableList()
-);
+const paragraphsList = docContainer.setContainer('content', new LoroMovableList());
 
 // Paragraph 1
 const paragraph1 = paragraphsList.pushContainer(new LoroMap());
@@ -90,8 +80,7 @@ function loroSync(loroDoc: LoroDoc) {
                     from += 1;
                     let groupTexts: Node[][] = [];
                     for (let idx = 0; idx < targetNode.childCount; idx++) {
-                      const lastChild =
-                        idx > 0 ? targetNode.child(idx - 1) : null;
+                      const lastChild = idx > 0 ? targetNode.child(idx - 1) : null;
                       const child = targetNode.child(idx);
                       if (child.isText) {
                         if (lastChild?.isText) {
@@ -104,9 +93,7 @@ function loroSync(loroDoc: LoroDoc) {
                       }
 
                       if (p <= groupTexts.length - 1) {
-                        from += Fragment.fromArray(
-                          groupTexts.slice(0, p).flat()
-                        ).size;
+                        from += Fragment.fromArray(groupTexts.slice(0, p).flat()).size;
                         break;
                       }
                     }
@@ -128,26 +115,16 @@ function loroSync(loroDoc: LoroDoc) {
               console.debug(`diff`, diff);
               diff.diff.forEach((delta) => {
                 if (delta.retain) {
-                  Object.entries(delta.attributes ?? {}).forEach(
-                    ([key, value]) => {
-                      if (!(key in pmSchema.marks)) return;
-                      if (typeof value !== 'boolean') return;
+                  Object.entries(delta.attributes ?? {}).forEach(([key, value]) => {
+                    if (!(key in pmSchema.marks)) return;
+                    if (typeof value !== 'boolean') return;
 
-                      if (value) {
-                        tr.addMark(
-                          from,
-                          from + delta.retain,
-                          pmSchema.mark(key)
-                        );
-                      } else {
-                        tr.removeMark(
-                          from,
-                          from + delta.retain,
-                          pmSchema.mark(key)
-                        );
-                      }
+                    if (value) {
+                      tr.addMark(from, from + delta.retain, pmSchema.mark(key));
+                    } else {
+                      tr.removeMark(from, from + delta.retain, pmSchema.mark(key));
                     }
-                  );
+                  });
                   from += delta.retain;
                 } else if (delta.delete) {
                   tr.delete(from, from + delta.delete);
@@ -155,26 +132,16 @@ function loroSync(loroDoc: LoroDoc) {
                   tr.insertText(delta.insert, from);
 
                   if (delta.attributes) {
-                    Object.entries(delta.attributes ?? {}).forEach(
-                      ([key, value]) => {
-                        if (!(key in pmSchema.marks)) return;
-                        if (typeof value !== 'boolean') return;
+                    Object.entries(delta.attributes ?? {}).forEach(([key, value]) => {
+                      if (!(key in pmSchema.marks)) return;
+                      if (typeof value !== 'boolean') return;
 
-                        if (value) {
-                          tr.addMark(
-                            from,
-                            from + delta.insert.length,
-                            pmSchema.mark(key)
-                          );
-                        } else {
-                          tr.removeMark(
-                            from,
-                            from + delta.insert.length,
-                            pmSchema.mark(key)
-                          );
-                        }
+                      if (value) {
+                        tr.addMark(from, from + delta.insert.length, pmSchema.mark(key));
+                      } else {
+                        tr.removeMark(from, from + delta.insert.length, pmSchema.mark(key));
                       }
-                    );
+                    });
                   }
                   from += delta.insert.length;
                 }
@@ -192,13 +159,7 @@ function loroSync(loroDoc: LoroDoc) {
   });
 }
 
-const Editor = ({
-  loroDoc,
-  docId,
-}: {
-  loroDoc: LoroDoc;
-  docId: ContainerID;
-}) => {
+const Editor = ({ loroDoc, docId }: { loroDoc: LoroDoc; docId: ContainerID }) => {
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorView | null>(null);
 

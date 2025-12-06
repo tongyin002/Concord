@@ -1,22 +1,10 @@
 import { authClient } from 'lib/auth-client';
-import {
-  accountsQuery,
-  schema,
-  useQuery,
-  Zero,
-  ZeroProvider,
-} from 'lib/zero-client';
+import { accountsQuery, schema, useQuery, Zero, ZeroProvider } from 'lib/zero-client';
 import { useCallback, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import Editor from './Editor';
 
-const ZeroComponent = ({
-  userId,
-  userName,
-}: {
-  userId: string;
-  userName: string;
-}) => {
+const ZeroComponent = ({ userId, userName }: { userId: string; userName: string }) => {
   const [accounts] = useQuery(accountsQuery(userId));
   return (
     <div>

@@ -2,6 +2,8 @@
   "oxc.requireConfig": true,
   "editor.formatOnPaste": false,
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "oxc.fmt.experimental": true,
+  "editor.defaultFormatter": "oxc.oxc-vscode",
   "typescript.tsdk": "node_modules/typescript/lib",
+  "oxc.configPath": "./oxfmtrc.json"
 }
