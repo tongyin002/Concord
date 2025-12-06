@@ -9,8 +9,8 @@
   "devDependencies": {
     "@dotenvx/dotenvx": "^1.51.1",
     "oxfmt": "^0.16.0",
-    "oxlint": "^1.30.0",
-    "oxlint-tsgolint": "^0.8.2",
+    "oxlint": "^1.31.0",
+    "oxlint-tsgolint": "^0.8.3",
     "turbo": "^2.6.1",
     "typescript": "^5.9.3"
   },
