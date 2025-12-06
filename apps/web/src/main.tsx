@@ -8,7 +8,7 @@ import {
 } from 'lib/zero-client';
 import { useCallback, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
-import './style.css';
+import Editor from './Editor';
 
 const ZeroComponent = ({
   userId,
@@ -38,6 +38,7 @@ const App = () => {
     return new Zero({
       userID: data.user.id,
       server: 'http://localhost:4848',
+      auth: () => token().then(({ data }) => data?.token),
       schema,
     });
   }, [data?.user]);
@@ -66,6 +67,7 @@ const App = () => {
           <button onClick={onSignOut}>Sign out</button>
         </div>
         <ZeroComponent userId={data.user.id} userName={data.user.name} />
+        <Editor />
       </ZeroProvider>
     );
   }
