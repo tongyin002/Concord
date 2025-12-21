@@ -1,51 +1,35 @@
-import { Mark, Node, NodeSpec as ProseMirrorNodeSpec, Schema, SchemaSpec } from 'prosemirror-model';
+import { Fragment, Mark, Node, NodeSpec, Schema, SchemaSpec } from 'prosemirror-model';
 import 'prosemirror-view/style/prosemirror.css';
-import {
-  LoroDoc,
-  LoroList,
-  LoroMovableList,
-  LoroText,
-  ContainerType as LoroContainerType,
-  ContainerID,
-  Container,
-  LoroMap,
-  isContainer,
-} from 'loro-crdt';
+import { LoroDoc, LoroText, isContainer, LoroMap } from 'loro-crdt';
+import { isLoroText, isMovableList } from './loroUtils';
 
-type NodeSpec = ProseMirrorNodeSpec & {
-  loroContainer: {
-    type: LoroContainerType;
-  };
-};
+const objectUnicode = '\uFFFC';
 
 const schemaSpec = {
   nodes: {
     doc: {
       content: 'paragraph+',
-      loroContainer: { type: 'MovableList' },
+      attrs: {
+        'loro-id': { default: 'temp:id', validate: 'string' },
+      },
     } as const satisfies NodeSpec,
     paragraph: {
       content: 'text*',
       attrs: {
-        'data-id': { default: 'temp:id', validate: 'string' },
+        'loro-id': { default: 'temp:id', validate: 'string' },
       },
       toDOM(node) {
-        return ['p', { 'data-id': node.attrs['data-id'] }, 0];
+        return ['p', { 'loro-id': node.attrs['loro-id'] }, 0];
       },
       parseDOM: [
         {
           tag: 'p',
-          getAttrs: (dom) => ({
-            'data-id': dom.getAttribute('data-id'),
-          }),
         },
       ],
-      loroContainer: { type: 'List' },
     } as const satisfies NodeSpec,
     text: {
       inline: true,
       marks: 'bold italic underline',
-      loroContainer: { type: 'Text' },
     } as const satisfies NodeSpec,
   },
   marks: {
@@ -67,68 +51,16 @@ const schemaSpec = {
 export const pmSchema = new Schema(schemaSpec);
 
 // Extract node names as a union type from the const schemaSpec
-type PMNodeName = keyof typeof schemaSpec.nodes;
 // This gives you: 'doc' | 'paragraph' | 'text'
+type PMNodeName = keyof typeof schemaSpec.nodes;
 
-type LoroBlockNode = LoroMap<{
-  type: Exclude<PMNodeName, 'text'>;
-  content: LoroMovableList<LoroNode> | LoroList<LoroNode>;
-}>;
-
-type LoroNode = LoroText | LoroBlockNode;
-
-type MaybeLoroNodeContent = LoroMovableList<unknown> | LoroList<unknown>;
-
-type MaybeLoroBlockNode = LoroMap<{
-  type: Exclude<PMNodeName, 'text'>;
-  content: MaybeLoroNodeContent;
-}>;
-
-function isLoroTextNode(container: Container): container is LoroText {
-  return container.kind() === 'Text';
-}
-
-function isLoroMovableList(container: Container): container is LoroMovableList {
-  return container.kind() === 'MovableList';
-}
-
-function isLoroList(container: Container): container is LoroList {
-  return container.kind() === 'List';
-}
-
-function maybeLoroBockNode(container: Container): container is MaybeLoroBlockNode {
-  if (container.kind() !== 'Map') return false;
-
-  const map = container as LoroMap;
-
-  const blockType = map.get('type');
-  if (typeof blockType !== 'string' || !(blockType in pmSchema.nodes)) return false;
-
-  const blockContent = map.get('content');
-  if (
-    !blockContent ||
-    !isContainer(blockContent) ||
-    !(isLoroMovableList(blockContent) || isLoroList(blockContent))
-  )
-    return false;
-
-  return true;
-}
-
-function maybeLoroNode(item: unknown): item is LoroText | MaybeLoroBlockNode {
-  if (!isContainer(item)) return false;
-
-  return isLoroTextNode(item) || maybeLoroBockNode(item);
-}
-
-function LoroTextToTextNodes(loroText: LoroText): Node[] {
+export function LoroTextToPMTextNodes(loroText: LoroText): Node[] {
   const pmTexts: Node[] = [];
 
   loroText.toDelta().forEach((delta) => {
     const lastPmText = pmTexts.length - 1 ? pmTexts[pmTexts.length - 1] : null;
 
-    if (delta.retain !== undefined) {
-    } else if (delta.insert !== undefined) {
+    if (delta.insert !== undefined) {
       const validMarksFromLoro: Mark[] = [];
 
       Object.entries(delta.attributes ?? {}).forEach(([key, value]) => {
@@ -152,71 +84,69 @@ function LoroTextToTextNodes(loroText: LoroText): Node[] {
           pmSchema.text(delta.insert, validMarksFromLoro.length ? validMarksFromLoro : undefined)
         );
       }
-    } else {
     }
   });
+
   return pmTexts;
 }
 
-function createPmBlockNodeFromLoroBlockNode(loroBlockNode: MaybeLoroBlockNode): Node {
-  const nodeType = loroBlockNode.get('type');
-  const content = loroBlockNode.get('content');
+// consecutive pm text nodes are managed by a single loro text node
+type LoroNodeType = Exclude<PMNodeName, 'text'>;
 
-  const pmNode = pmSchema.nodes[nodeType];
+// rough type before validation
+type MaybeLegitLoroNode<T extends LoroNodeType> = LoroMap<{ type: T; content?: unknown }>;
 
-  if (pmNode.inlineContent) {
-    const loroItems = content.toArray();
-    const pmInlineNodes: Node[] = [];
+function maybeLegitLoroNode<T extends LoroNodeType>(
+  container: unknown
+): container is MaybeLegitLoroNode<T> {
+  if (!isContainer(container)) return false;
+  if (container.kind() !== 'Map') return false;
 
-    for (const item of loroItems) {
-      if (!maybeLoroNode(item)) {
-        throw new Error('Container is not a loro container');
+  const type = (container as LoroMap).get('type');
+  return typeof type === 'string' && type in pmSchema.nodes && type !== 'text';
+}
+
+export function buildPMNodeFromLoroNode(loroNode: unknown): Node {
+  if (!maybeLegitLoroNode(loroNode)) {
+    throw new Error(`Node is not a legit loro node`);
+  }
+
+  const type = loroNode.get('type');
+  const content = loroNode.get('content');
+
+  let fragment: Fragment | undefined;
+  if (content) {
+    if (isContainer(content)) {
+      if (isMovableList(content)) {
+        fragment = Fragment.fromArray(content.toArray().map(buildPMNodeFromLoroNode));
+      } else if (isLoroText(content)) {
+        fragment = Fragment.fromArray(LoroTextToPMTextNodes(content));
+      } else {
+        throw new Error('Invalid content for node type ${type}');
       }
-
-      if (isLoroTextNode(item)) {
-        pmInlineNodes.push(...LoroTextToTextNodes(item));
-      }
+    } else {
+      throw new Error(`Invalid content for node type ${type} is not a container`);
     }
+  }
 
-    return pmSchema.node(
-      nodeType,
-      {
-        'data-id': loroBlockNode.id,
-      },
-      pmInlineNodes
-    );
+  if (fragment && !pmSchema.nodes[type].validContent(fragment)) {
+    throw new Error(`Invalid content for node type ${type}`);
   }
 
   return pmSchema.node(
-    nodeType,
+    type,
     {
-      'data-id': loroBlockNode.id,
+      'loro-id': loroNode.id,
     },
-    content.toArray().map((item) => {
-      if (!maybeLoroNode(item)) {
-        throw new Error('Container is not a loro container');
-      }
-
-      if (isLoroTextNode(item)) {
-        return pmSchema.text('');
-      }
-
-      return createPmBlockNodeFromLoroBlockNode(item);
-    })
+    fragment
   );
 }
 
-export function LoroDocToPmDoc(loroDoc: LoroDoc, docId: ContainerID): Node {
-  const loroDocNode = loroDoc.getContainerById(docId);
-  if (!loroDocNode || !maybeLoroBockNode(loroDocNode)) {
-    throw new Error('Container is not a loro doc node');
+export function loroDocToPMDoc(loroDoc: LoroDoc): Node {
+  const root = loroDoc.getByPath('docRoot');
+  if (!root) {
+    throw new Error('Doc root not found');
   }
 
-  const nodeType = loroDocNode.get('type');
-  if (nodeType !== 'doc') {
-    throw new Error('Container is not a loro doc node');
-  }
-
-  console.debug(`loroDoc`, loroDoc.toJSON());
-  return createPmBlockNodeFromLoroBlockNode(loroDocNode);
+  return buildPMNodeFromLoroNode(root);
 }

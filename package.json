@@ -4,7 +4,9 @@
     "clean": "turbo run clean",
     "build": "turbo run build",
     "dev": "dotenvx run -- turbo run dev",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "format": "turbo run format",
+    "format:check": "turbo run format:check"
   },
   "devDependencies": {
     "@dotenvx/dotenvx": "^1.51.1",
