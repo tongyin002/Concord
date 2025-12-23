@@ -5,21 +5,25 @@ import { isLoroText, isMovableList } from './loroUtils';
 
 const objectUnicode = '\uFFFC';
 
+export const LORO_ID_ATTR = 'loro-id';
+// This is the default identifier for newly created pm node which doesn't have a matching loro node yet
+export const LORO_DEFAULT_TEMP_ID = 'temp:id';
+
 const schemaSpec = {
   nodes: {
     doc: {
       content: 'paragraph+',
       attrs: {
-        'loro-id': { default: 'temp:id', validate: 'string' },
+        [LORO_ID_ATTR]: { default: LORO_DEFAULT_TEMP_ID, validate: 'string' },
       },
     } as const satisfies NodeSpec,
     paragraph: {
       content: 'text*',
       attrs: {
-        'loro-id': { default: 'temp:id', validate: 'string' },
+        [LORO_ID_ATTR]: { default: LORO_DEFAULT_TEMP_ID, validate: 'string' },
       },
       toDOM(node) {
-        return ['p', { 'loro-id': node.attrs['loro-id'] }, 0];
+        return ['p', { [LORO_ID_ATTR]: node.attrs[LORO_ID_ATTR] }, 0];
       },
       parseDOM: [
         {
@@ -136,7 +140,7 @@ export function buildPMNodeFromLoroNode(loroNode: unknown): Node {
   return pmSchema.node(
     type,
     {
-      'loro-id': loroNode.id,
+      [LORO_ID_ATTR]: loroNode.id,
     },
     fragment
   );

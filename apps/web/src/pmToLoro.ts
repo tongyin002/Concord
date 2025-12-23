@@ -1,9 +1,10 @@
 import { isContainer, isContainerId, LoroDoc } from 'loro-crdt';
 import { Node } from 'prosemirror-model';
 import { isLoroMap } from './loroUtils';
+import { LORO_ID_ATTR } from './loroToPm';
 
 export function getLoroNodeFromPMNode(loroDoc: LoroDoc, node: Node) {
-  const loroId = node.attrs['loro-id'];
+  const loroId = node.attrs[LORO_ID_ATTR];
   if (!loroId) {
     return null;
   }

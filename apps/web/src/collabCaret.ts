@@ -5,6 +5,7 @@ import { getLoroNodeFromPMNode } from './pmToLoro';
 import { isCursorEqual, isLoroDocument, isLoroParagraph } from './loroUtils';
 import { PresenceStore } from './presenceStore';
 import { Fragment, ResolvedPos } from 'prosemirror-model';
+import { LORO_ID_ATTR, LORO_DEFAULT_TEMP_ID } from './loroToPm';
 
 type PresenceUpdateMeta = {
   updated: Set<string>;
@@ -123,7 +124,7 @@ export function getLoroCursorFromPMPosition(position: ResolvedPos, loroDoc: Loro
   const anchorNode = position.node();
   // This is because loro sync plugin will append an additional transaction to update the doc
   // we can ignore it
-  if (anchorNode.attrs['loro-id'] === 'temp:id') {
+  if (anchorNode.attrs[LORO_ID_ATTR] === LORO_DEFAULT_TEMP_ID) {
     return null;
   }
 

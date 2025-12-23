@@ -5,6 +5,7 @@ import { getLoroNodeFromPMNode } from './pmToLoro';
 import { assert, isLoroDocument, isLoroParagraph, isMovableList } from './loroUtils';
 import { Fragment, Schema } from 'prosemirror-model';
 import { Node } from 'prosemirror-model';
+import { LORO_ID_ATTR, LORO_DEFAULT_TEMP_ID } from './loroToPm';
 
 const pluginKey = new PluginKey<Map<ContainerID, number>>('loroSync');
 
@@ -138,8 +139,8 @@ export function loroSyncAdvanced(loroDoc: LoroDoc, pmSchema: Schema) {
             /** Begin: Insert content into loro nodes */
             docAfterStep.nodesBetween(mappedFrom, mappedTo, (node, pos, parent, index) => {
               if (pos >= mappedFrom && pos + node.nodeSize <= mappedTo) {
-                const loroId = node.attrs['loro-id'];
-                if (loroId === 'temp:id') {
+                const loroId = node.attrs[LORO_ID_ATTR];
+                if (loroId === LORO_DEFAULT_TEMP_ID) {
                   if (!parent) throw new Error('not possible');
                   if (node.type.name === 'paragraph') {
                     const loroParent = getLoroNodeFromPMNode(loroDoc, parent);
@@ -216,11 +217,14 @@ export function loroSyncAdvanced(loroDoc: LoroDoc, pmSchema: Schema) {
                 const sliceStart = 0;
                 const sliceLength = Math.min(node.content.size, mappedTo - pos - 1);
 
-                const loroId = node.attrs['loro-id'];
+                const loroId = node.attrs[LORO_ID_ATTR];
                 // if its' a temp:id, or it's a repeatd loro id, it means we need to create a new loro node
                 // how do we know if it's a repeated loro id? -> we check if it has the same id as the previous node
                 const previousNode = index > 0 ? parent?.child(index - 1) : null;
-                if (loroId === 'temp:id' || previousNode?.attrs['loro-id'] === loroId) {
+                if (
+                  loroId === LORO_DEFAULT_TEMP_ID ||
+                  previousNode?.attrs[LORO_ID_ATTR] === loroId
+                ) {
                   if (!parent) throw new Error('not possible');
                   if (node.type.name === 'paragraph') {
                     const loroParent = getLoroNodeFromPMNode(loroDoc, parent);
@@ -375,7 +379,7 @@ export function loroSyncAdvanced(loroDoc: LoroDoc, pmSchema: Schema) {
       const pluginState = pluginKey.getState(newState);
       if (pluginState?.size) {
         pluginState.forEach((pos, id) => {
-          tr.setNodeAttribute(pos, 'loro-id', id);
+          tr.setNodeAttribute(pos, LORO_ID_ATTR, id);
         });
       }
       return tr.steps.length ? tr : null;
@@ -428,7 +432,7 @@ export function loroSyncAdvanced(loroDoc: LoroDoc, pmSchema: Schema) {
                   .map((insert) => {
                     if (isContainer(insert) && isLoroParagraph(insert)) {
                       return pmSchema.node('paragraph', {
-                        'loro-id': insert.id,
+                        [LORO_ID_ATTR]: insert.id,
                       });
                     }
                     return null;
