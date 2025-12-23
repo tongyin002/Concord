@@ -41,6 +41,10 @@ export class PresenceStore extends EphemeralStore<{
     });
   }
 
+  hasLocal() {
+    return this.get(this.peer) !== undefined;
+  }
+
   deleteLocal() {
     this.delete(this.peer);
   }

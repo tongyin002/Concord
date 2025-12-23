@@ -6,109 +6,129 @@ import { isCursorEqual, isLoroDocument, isLoroParagraph } from './loroUtils';
 import { PresenceStore } from './presenceStore';
 import { Fragment, ResolvedPos } from 'prosemirror-model';
 
+type PresenceUpdateMeta = {
+  updated: Set<string>;
+  removed: Set<string>;
+};
+
+type DecorationSpec = {
+  peerId: string;
+};
+
 const pluginKey = new PluginKey<DecorationSet>('collabCaret');
 
-function createDecorationSet(loroDoc: LoroDoc, store: PresenceStore, state: EditorState) {
+function createDecorationsForPeer(
+  loroDoc: LoroDoc,
+  state: EditorState,
+  peerId: string,
+  anchor: ReturnType<typeof import('loro-crdt').Cursor.decode> | null,
+  head: ReturnType<typeof import('loro-crdt').Cursor.decode> | null,
+  user: { name: string; color: string } | null
+): Decoration[] {
   const decorations: Decoration[] = [];
 
-  store.getAll().forEach(({ anchor, head, user }) => {
-    if (head) {
-      const headCursorPos = loroDoc.getCursorPos(head);
-      if (headCursorPos) {
-        const { offset } = headCursorPos;
-        const path = loroDoc.getPathToContainer(head.containerId());
-        if (!path) return;
+  if (!head) return decorations;
 
-        let node = state.doc;
-        let pos = 1;
-        for (const p of path) {
-          if (typeof p === 'number') {
-            if (node.childCount <= p) return;
+  const headCursorPos = loroDoc.getCursorPos(head);
+  if (!headCursorPos) return decorations;
 
-            pos += Fragment.fromArray(node.children.slice(0, p)).size;
-            node = node.child(p);
-          }
-        }
+  const { offset } = headCursorPos;
+  const path = loroDoc.getPathToContainer(head.containerId());
+  if (!path) return decorations;
 
-        let headPosition = pos + offset;
-        if (!node.isTextblock) {
-          headPosition = Fragment.fromArray(node.children.slice(0, offset)).size + 1;
-        }
+  let node = state.doc;
+  let pos = 1;
+  for (const p of path) {
+    if (typeof p === 'number') {
+      if (node.childCount <= p) return decorations;
+      pos += Fragment.fromArray(node.children.slice(0, p)).size;
+      node = node.child(p);
+    }
+  }
 
-        decorations.push(
-          Decoration.widget(headPosition, () => {
-            const cursorContainer = document.createElement('span');
-            cursorContainer.classList.add(
-              'relative',
-              '-mr-[1px]',
-              '-ml-[1px]',
-              'border-l-[1px]',
-              'border-r-[1px]',
-              'pointer-events-none',
-              'break-normal'
-            );
-            const cursorColor = user?.color ?? 'black';
-            cursorContainer.style.borderColor = `color-mix(in srgb, ${cursorColor} 30%, transparent)`;
+  let headPosition = pos + offset;
+  // i.e. a full selection
+  if (!node.isTextblock) {
+    headPosition = Fragment.fromArray(node.children.slice(0, offset)).size + 1;
+  }
 
-            const userDiv = document.createElement('div');
-            userDiv.classList.add(
-              'absolute',
-              '-left-[1px]',
-              '-top-[16px]',
-              'text-xs',
-              'pl-1',
-              'pr-1',
-              'whitespace-nowrap'
-            );
-            userDiv.style.backgroundColor = `color-mix(in srgb, ${cursorColor} 50%, white)`;
-            userDiv.insertBefore(document.createTextNode(`${user?.name ?? 'Unknown'}`), null);
-
-            const nonbreakingSpace1 = document.createTextNode('\u2060');
-            const nonbreakingSpace2 = document.createTextNode('\u2060');
-            cursorContainer.insertBefore(nonbreakingSpace1, null);
-            cursorContainer.insertBefore(userDiv, null);
-            cursorContainer.insertBefore(nonbreakingSpace2, null);
-            return cursorContainer;
-          })
+  decorations.push(
+    Decoration.widget(
+      headPosition,
+      () => {
+        const cursorContainer = document.createElement('span');
+        cursorContainer.classList.add(
+          'relative',
+          '-mr-[1px]',
+          '-ml-[1px]',
+          'border-l-[1px]',
+          'border-r-[1px]',
+          'pointer-events-none',
+          'break-normal'
         );
+        const cursorColor = user?.color ?? 'black';
+        cursorContainer.style.borderColor = `color-mix(in srgb, ${cursorColor} 30%, transparent)`;
 
-        if (anchor && !isCursorEqual(anchor, head)) {
-          const anchorCursorPos = loroDoc.getCursorPos(anchor);
-          if (anchorCursorPos) {
-            const { offset } = anchorCursorPos;
-            const path = loroDoc.getPathToContainer(anchor.containerId());
-            if (!path) return;
+        const userDiv = document.createElement('div');
+        userDiv.classList.add(
+          'absolute',
+          '-left-[1px]',
+          '-top-[16px]',
+          'text-xs',
+          'pl-1',
+          'pr-1',
+          'whitespace-nowrap'
+        );
+        userDiv.style.backgroundColor = `color-mix(in srgb, ${cursorColor} 50%, white)`;
+        userDiv.insertBefore(document.createTextNode(`${user?.name ?? 'Unknown'}`), null);
 
-            let node = state.doc;
-            let pos = 1;
-            for (const p of path) {
-              if (typeof p === 'number') {
-                if (node.childCount <= p) return;
+        const nonbreakingSpace1 = document.createTextNode('\u2060');
+        const nonbreakingSpace2 = document.createTextNode('\u2060');
+        cursorContainer.insertBefore(nonbreakingSpace1, null);
+        cursorContainer.insertBefore(userDiv, null);
+        cursorContainer.insertBefore(nonbreakingSpace2, null);
+        return cursorContainer;
+      },
+      { peerId }
+    )
+  );
 
-                pos += Fragment.fromArray(node.children.slice(0, p)).size;
-                node = node.child(p);
-              }
-            }
+  if (anchor && !isCursorEqual(anchor, head)) {
+    const anchorCursorPos = loroDoc.getCursorPos(anchor);
+    if (anchorCursorPos) {
+      const { offset } = anchorCursorPos;
+      const path = loroDoc.getPathToContainer(anchor.containerId());
+      if (!path) return decorations;
 
-            let anchorPosition = pos + offset;
-            if (!node.isTextblock) {
-              anchorPosition = Fragment.fromArray(state.doc.children.slice(0, offset)).size + 1;
-            }
-            const from = anchorPosition < headPosition ? anchorPosition : headPosition;
-            const to = anchorPosition > headPosition ? anchorPosition : headPosition;
-            const selectionColor = user?.color ?? 'black';
-            decorations.push(
-              Decoration.inline(from, to, {
-                style: `background-color: color-mix(in srgb, ${selectionColor} 30%, transparent);`,
-              })
-            );
-          }
+      let node = state.doc;
+      let pos = 1;
+      for (const p of path) {
+        if (typeof p === 'number') {
+          if (node.childCount <= p) return decorations;
+          pos += Fragment.fromArray(node.children.slice(0, p)).size;
+          node = node.child(p);
         }
       }
-    }
-  });
 
-  return DecorationSet.create(state.doc, decorations);
+      let anchorPosition = pos + offset;
+      if (!node.isTextblock) {
+        anchorPosition = Fragment.fromArray(state.doc.children.slice(0, offset)).size + 1;
+      }
+      const from = anchorPosition < headPosition ? anchorPosition : headPosition;
+      const to = anchorPosition > headPosition ? anchorPosition : headPosition;
+      const selectionColor = user?.color ?? 'black';
+      decorations.push(
+        Decoration.inline(
+          from,
+          to,
+          { style: `background-color: color-mix(in srgb, ${selectionColor} 30%, transparent);` },
+          { peerId }
+        )
+      );
+    }
+  }
+
+  return decorations;
 }
 
 function getLoroCursorFromPMPosition(position: ResolvedPos, loroDoc: LoroDoc) {
@@ -139,11 +159,41 @@ export function collabCaret(
     key: pluginKey,
     state: {
       init: (_config, state) => {
-        return createDecorationSet(loroDoc, store, state);
+        return DecorationSet.create(
+          state.doc,
+          store
+            .getAll()
+            .flatMap(({ peerId, anchor, head, user }) =>
+              createDecorationsForPeer(loroDoc, state, peerId, anchor, head, user)
+            )
+        );
       },
       apply: (tr, decorationSet, _oldState, newState) => {
-        if (tr.getMeta('loro-presence-update')) {
-          return createDecorationSet(loroDoc, store, newState);
+        const presenceUpdate = tr.getMeta('loro-presence-update') as PresenceUpdateMeta | undefined;
+        if (presenceUpdate) {
+          const { updated, removed } = presenceUpdate;
+
+          // Find decorations to remove (updated or removed peers)
+          const decorationsToRemove = decorationSet.find(
+            undefined,
+            undefined,
+            ({ peerId }: DecorationSpec) => {
+              return updated.has(peerId) || removed.has(peerId);
+            }
+          );
+
+          // Create new decorations for updated peers
+          const newDecorations: Decoration[] = [];
+
+          store.getAll().forEach(({ peerId, anchor, head, user }) => {
+            if (updated.has(peerId)) {
+              newDecorations.push(
+                ...createDecorationsForPeer(loroDoc, newState, peerId, anchor, head, user)
+              );
+            }
+          });
+
+          return decorationSet.remove(decorationsToRemove).add(newState.doc, newDecorations);
         }
 
         if (!tr.getMeta('loro-import')) {
@@ -173,19 +223,41 @@ export function collabCaret(
     },
     view: (view) => {
       let timeoutId: number | null = null;
+      let pendingChanges = {
+        updated: new Set<string>(),
+        removed: new Set<string>(),
+      };
+
       const unsubscribe = store.subscribe((event) => {
         if (event.by === 'import' || event.by === 'timeout') {
           // update cursors by updating view state
           const { added, updated, removed } = event;
           if (added.length || updated.length || removed.length) {
+            // Accumulate changes while waiting for the timeout
+            // Both added and updated peers need decorations created
+            // Later events override earlier ones (e.g., removed then added = updated)
+            added.forEach((id) => {
+              pendingChanges.removed.delete(id);
+              pendingChanges.updated.add(id);
+            });
+            updated.forEach((id) => {
+              pendingChanges.removed.delete(id);
+              pendingChanges.updated.add(id);
+            });
+            removed.forEach((id) => {
+              pendingChanges.updated.delete(id);
+              pendingChanges.removed.add(id);
+            });
+
             if (timeoutId) {
               return;
             }
 
             timeoutId = setTimeout(() => {
               if (view.isDestroyed) return;
-              const tr = view.state.tr.setMeta('loro-presence-update', true);
+              const tr = view.state.tr.setMeta('loro-presence-update', pendingChanges);
               view.dispatch(tr);
+              pendingChanges = { updated: new Set(), removed: new Set() };
               timeoutId = null;
             }, 0);
           }
