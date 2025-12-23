@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { EditorState } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
 import { keymap } from 'prosemirror-keymap';
@@ -6,6 +6,8 @@ import { baseKeymap, toggleMark } from 'prosemirror-commands';
 import { LoroDoc, LoroMap, LoroMovableList, LoroText } from 'loro-crdt';
 import { loroDocToPMDoc, pmSchema } from './loroToPm';
 import { loroSyncAdvanced } from './loroSync';
+import { collabCaret } from './collabCaret';
+import { PresenceStore } from './presenceStore';
 
 const loroDoc = new LoroDoc();
 loroDoc.configTextStyle({
@@ -92,9 +94,16 @@ loroDoc2.import(update5);
 const Editor = ({
   loroDoc,
   onUpdate,
+  store,
+  user,
 }: {
   loroDoc: LoroDoc;
   onUpdate: (update: Uint8Array) => void;
+  store: PresenceStore;
+  user: {
+    name: string;
+    color: string;
+  };
 }) => {
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorView | null>(null);
@@ -112,6 +121,7 @@ const Editor = ({
           'Mod-u': toggleMark(pmSchema.marks.underline),
         }),
         loroSyncAdvanced(loroDoc, pmSchema),
+        collabCaret(loroDoc, store, user),
       ],
     });
 
@@ -140,10 +150,53 @@ const EditorTestBed = () => {
     loroDoc.import(update);
   }, []);
 
+  const ephemeralStore = useRef<PresenceStore>(new PresenceStore(loroDoc.peerIdStr));
+  useEffect(() => {
+    const unsubscribe = ephemeralStore.current.subscribeLocalUpdates((update) => {
+      ephermeralStore2.current.apply(update);
+    });
+    return () => {
+      unsubscribe();
+      ephemeralStore.current?.destroy();
+    };
+  }, []);
+  const ephermeralStore2 = useRef<PresenceStore>(new PresenceStore(loroDoc2.peerIdStr));
+  useEffect(() => {
+    const unsubscribe = ephermeralStore2.current.subscribeLocalUpdates((update) => {
+      ephemeralStore.current.apply(update);
+    });
+    return () => {
+      unsubscribe();
+      ephermeralStore2.current?.destroy();
+    };
+  }, []);
+
+  const { user1, user2 } = useMemo(() => {
+    return {
+      user1: {
+        name: 'User 1',
+        color: '#FF0000',
+      },
+      user2: {
+        name: 'User 2',
+        color: 'green',
+      },
+    };
+  }, []);
   return (
     <>
-      <Editor loroDoc={loroDoc} onUpdate={onLocalUpdate} />
-      <Editor loroDoc={loroDoc2} onUpdate={onLocalUpdate2} />
+      <Editor
+        loroDoc={loroDoc}
+        onUpdate={onLocalUpdate}
+        store={ephemeralStore.current}
+        user={user1}
+      />
+      <Editor
+        loroDoc={loroDoc2}
+        onUpdate={onLocalUpdate2}
+        store={ephermeralStore2.current}
+        user={user2}
+      />
     </>
   );
 };

@@ -118,8 +118,6 @@ export function loroSyncAdvanced(loroDoc: LoroDoc, pmSchema: Schema) {
                         }
                       });
 
-                      console.debug(`what???`, loroTextBefore?.toDelta());
-
                       // delete loroNode
                       loroList.delete(indexForLoroNode, 1);
                     }

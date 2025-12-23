@@ -1,4 +1,12 @@
-import { Container, isContainer, LoroList, LoroMap, LoroMovableList, LoroText } from 'loro-crdt';
+import {
+  Container,
+  Cursor,
+  isContainer,
+  LoroList,
+  LoroMap,
+  LoroMovableList,
+  LoroText,
+} from 'loro-crdt';
 
 export type LoroParagraph = {
   type: 'paragraph';
@@ -51,4 +59,17 @@ export function assert<T>(
     }
     throw new Error(`Loro node does not match the assertion`);
   }
+}
+
+export function isCursorEqual(cursor?: Cursor | null, cursor2?: Cursor | null): boolean {
+  if (!cursor && !cursor2) return true;
+  if (!cursor || !cursor2) return false;
+
+  const pos1 = cursor.pos();
+  const pos2 = cursor2.pos();
+  return (
+    pos1?.counter === pos2?.counter &&
+    pos1?.peer === pos2?.peer &&
+    cursor.containerId() === cursor2.containerId()
+  );
 }
