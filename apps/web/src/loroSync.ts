@@ -381,8 +381,25 @@ export function loroSyncAdvanced(loroDoc: LoroDoc, pmSchema: Schema) {
       return tr.steps.length ? tr : null;
     },
     view: (view) => {
-      const unsubscribe = loroDoc.subscribe(({ events, by }) => {
-        if (by !== 'import') {
+      const unsubscribe = loroDoc.subscribe(({ events, by, origin }) => {
+        let shouldProceed = false;
+        switch (by) {
+          case 'import':
+            shouldProceed = true;
+            break;
+          case 'local':
+            shouldProceed = origin === 'undo';
+            break;
+          case 'checkout':
+            shouldProceed = false;
+            break;
+          default: {
+            const exhaustiveCheck: never = by;
+            throw new Error(`Unexpected event type: ${exhaustiveCheck}`);
+          }
+        }
+
+        if (!shouldProceed) {
           return;
         }
 

@@ -1,4 +1,4 @@
-import { LoroDoc } from 'loro-crdt';
+import { Cursor, LoroDoc } from 'loro-crdt';
 import { EditorState, Plugin, PluginKey } from 'prosemirror-state';
 import { Decoration, DecorationSet } from 'prosemirror-view';
 import { getLoroNodeFromPMNode } from './pmToLoro';
@@ -17,6 +17,32 @@ type DecorationSpec = {
 
 const pluginKey = new PluginKey<DecorationSet>('collabCaret');
 
+export function getPMPositionFromLoroCursor(cursor: Cursor, loroDoc: LoroDoc, state: EditorState) {
+  const cursorPos = loroDoc.getCursorPos(cursor);
+  if (!cursorPos) return null;
+
+  const path = loroDoc.getPathToContainer(cursor.containerId());
+  if (!path) return null;
+
+  const { offset } = cursorPos;
+
+  let node = state.doc;
+  let pos = 1;
+  for (const p of path) {
+    if (typeof p === 'number') {
+      if (node.childCount <= p) return null;
+      pos += Fragment.fromArray(node.children.slice(0, p)).size;
+      node = node.child(p);
+    }
+  }
+
+  // if the node is not a textblock, we need aggregate the size of the children (because of list)
+  // and add 1 for block node's beginning open tag
+  return node.isTextblock
+    ? pos + cursorPos.offset
+    : Fragment.fromArray(node.children.slice(0, offset)).size + 1;
+}
+
 function createDecorationsForPeer(
   loroDoc: LoroDoc,
   state: EditorState,
@@ -29,28 +55,8 @@ function createDecorationsForPeer(
 
   if (!head) return decorations;
 
-  const headCursorPos = loroDoc.getCursorPos(head);
-  if (!headCursorPos) return decorations;
-
-  const { offset } = headCursorPos;
-  const path = loroDoc.getPathToContainer(head.containerId());
-  if (!path) return decorations;
-
-  let node = state.doc;
-  let pos = 1;
-  for (const p of path) {
-    if (typeof p === 'number') {
-      if (node.childCount <= p) return decorations;
-      pos += Fragment.fromArray(node.children.slice(0, p)).size;
-      node = node.child(p);
-    }
-  }
-
-  let headPosition = pos + offset;
-  // i.e. a full selection
-  if (!node.isTextblock) {
-    headPosition = Fragment.fromArray(node.children.slice(0, offset)).size + 1;
-  }
+  const headPosition = getPMPositionFromLoroCursor(head, loroDoc, state);
+  if (headPosition === null) return decorations;
 
   decorations.push(
     Decoration.widget(
@@ -94,26 +100,8 @@ function createDecorationsForPeer(
   );
 
   if (anchor && !isCursorEqual(anchor, head)) {
-    const anchorCursorPos = loroDoc.getCursorPos(anchor);
-    if (anchorCursorPos) {
-      const { offset } = anchorCursorPos;
-      const path = loroDoc.getPathToContainer(anchor.containerId());
-      if (!path) return decorations;
-
-      let node = state.doc;
-      let pos = 1;
-      for (const p of path) {
-        if (typeof p === 'number') {
-          if (node.childCount <= p) return decorations;
-          pos += Fragment.fromArray(node.children.slice(0, p)).size;
-          node = node.child(p);
-        }
-      }
-
-      let anchorPosition = pos + offset;
-      if (!node.isTextblock) {
-        anchorPosition = Fragment.fromArray(state.doc.children.slice(0, offset)).size + 1;
-      }
+    const anchorPosition = getPMPositionFromLoroCursor(anchor, loroDoc, state);
+    if (anchorPosition !== null) {
       const from = anchorPosition < headPosition ? anchorPosition : headPosition;
       const to = anchorPosition > headPosition ? anchorPosition : headPosition;
       const selectionColor = user?.color ?? 'black';
@@ -131,7 +119,7 @@ function createDecorationsForPeer(
   return decorations;
 }
 
-function getLoroCursorFromPMPosition(position: ResolvedPos, loroDoc: LoroDoc) {
+export function getLoroCursorFromPMPosition(position: ResolvedPos, loroDoc: LoroDoc) {
   const anchorNode = position.node();
   // This is because loro sync plugin will append an additional transaction to update the doc
   // we can ignore it

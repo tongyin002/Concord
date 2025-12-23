@@ -8,6 +8,7 @@ import { loroDocToPMDoc, pmSchema } from './loroToPm';
 import { loroSyncAdvanced } from './loroSync';
 import { collabCaret } from './collabCaret';
 import { PresenceStore } from './presenceStore';
+import { redo, undo, undoRedo } from './undoRedo';
 
 const loroDoc = new LoroDoc();
 loroDoc.configTextStyle({
@@ -119,9 +120,12 @@ const Editor = ({
           'Mod-b': toggleMark(pmSchema.marks.bold),
           'Mod-i': toggleMark(pmSchema.marks.italic),
           'Mod-u': toggleMark(pmSchema.marks.underline),
+          'Mod-z': undo,
+          'Mod-Shift-z': redo,
         }),
         loroSyncAdvanced(loroDoc, pmSchema),
         collabCaret(loroDoc, store, user),
+        undoRedo(loroDoc),
       ],
     });
 
