@@ -20,16 +20,16 @@
     "prosemirror-state": "^1.4.4",
     "prosemirror-transform": "^1.10.5",
     "prosemirror-view": "^1.41.4",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "tailwindcss": "^4.1.17"
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.17",
-    "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
-    "@vitejs/plugin-react": "^5.0.4",
-    "vite": "^7.1.9",
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
+    "vite": "^7.3.0",
     "vite-plugin-wasm": "^3.5.0"
   }
 }
