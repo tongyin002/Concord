@@ -1,6 +1,6 @@
-import { Plugin, PluginKey } from 'prosemirror-state';
+import { EditorState, Plugin, PluginKey, Transaction } from 'prosemirror-state';
 import { ContainerID, isContainer, LoroDoc, LoroMap, LoroText } from 'loro-crdt';
-import { AddMarkStep, RemoveMarkStep, ReplaceStep } from 'prosemirror-transform';
+import { AddMarkStep, AttrStep, RemoveMarkStep, ReplaceStep } from 'prosemirror-transform';
 import { getLoroNodeFromPMNode } from './pmToLoro';
 import { assert, isLoroDocument, isLoroParagraph, isMovableList } from './loroUtils';
 import { Fragment, Schema } from 'prosemirror-model';
@@ -9,381 +9,405 @@ import { LORO_ID_ATTR, LORO_DEFAULT_TEMP_ID } from './loroToPm';
 
 const pluginKey = new PluginKey<Map<ContainerID, number>>('loroSync');
 
+/**
+ * Synchronizes ProseMirror document changes to the Loro CRDT document.
+ *
+ * Called on every local transaction that modifies the editor content.
+ * Performance is critical here since this runs on every keystroke and edit operation.
+ *
+ * @param tr - The ProseMirror transaction containing the document changes
+ * @param loroDoc - The Loro CRDT document to sync changes to
+ * @param editorOldState - The editor state before the transaction was applied
+ * @returns The transaction, potentially with additional steps to assign Loro IDs to new nodes
+ */
+export function updateLoroDocGivenTransaction(
+  tr: Transaction,
+  loroDoc: LoroDoc,
+  editorOldState: EditorState
+) {
+  if (!tr.docChanged || tr.getMeta('sync-loro-to-pm')) {
+    return tr;
+  }
+
+  const stepDataByNewlyAddedLoroContainerId = new Map<
+    ContainerID,
+    {
+      pos: number;
+      stepIndex: number;
+    }
+  >();
+
+  // We run the transaction in a separate "simulated" transaction to track when new ProseMirror nodes
+  // are created and need Loro IDs assigned. We can't just modify and return the simulated transaction
+  // because the original transaction contains important metadata (selection state, stored marks, plugin
+  // meta, etc.) that must be preserved. Instead, we replay each step, detect when AttrStep is needed
+  // to assign Loro IDs, and append those additional steps to the original transaction at the end.
+  let simulatedTr = editorOldState.tr;
+  tr.steps.forEach((step, stepIndex) => {
+    const docBeforeStep = simulatedTr.doc; // Capture before applying
+    simulatedTr.step(step);
+    const docAfterStep = simulatedTr.doc; // Capture after applying
+
+    if (step instanceof ReplaceStep) {
+      let { from, to } = step;
+
+      // ========== DELETION PHASE ==========
+      // Walk through nodes in the deleted range and remove corresponding content from Loro
+      docBeforeStep.nodesBetween(from, to, (node, pos, parent) => {
+        if (pos >= from && pos + node.nodeSize <= to) {
+          const loroNode = getLoroNodeFromPMNode(loroDoc, node);
+          if (loroNode) {
+            if (!parent) throw new Error('not possible');
+            const loroParent = getLoroNodeFromPMNode(loroDoc, parent);
+            assert(loroParent, isLoroDocument);
+
+            // Use Loro's path-based lookup to find the node's index within its parent.
+            // This is O(1) compared to iterating through all siblings which would be O(n).
+            const path = loroDoc.getPathToContainer(loroNode.id);
+            const loroIndex = path?.[path.length - 1];
+            if (typeof loroIndex !== 'number') {
+              throw new Error(`Could not find index for loro node: ${loroNode.id}`);
+            }
+            stepDataByNewlyAddedLoroContainerId.delete(loroNode.id);
+            loroParent.get('content').delete(loroIndex, 1);
+            return false;
+          }
+        } else if (pos < from) {
+          const loroNode = getLoroNodeFromPMNode(loroDoc, node);
+          if (loroNode && isLoroParagraph(loroNode)) {
+            const cutStart = from - pos - 1; // -1 to account for block node opening tag
+            const cutLength = Math.min(node.content.size - cutStart, to - from);
+            loroNode.get('content')?.delete(cutStart, cutLength);
+            return false;
+          }
+        } else if (pos + node.nodeSize > to) {
+          const loroNode = getLoroNodeFromPMNode(loroDoc, node);
+          if (loroNode && isLoroParagraph(loroNode)) {
+            const cutStart = 0;
+            const cutLength = Math.min(node.content.size, to - pos - 1); // - 1 to account for block node opening tag
+            loroNode.get('content')?.delete(cutStart, cutLength);
+            // Handle paragraph merging: When a deletion causes two paragraphs to join together
+            // (e.g., pressing backspace at the start of a paragraph), we need to merge the
+            // content of this paragraph into its previous sibling in Loro.
+            // This happens when: (1) the deletion starts inside a previous node (from !== pos),
+            // and (2) the deleted slice has an open start (openStart !== 0), indicating the
+            // previous paragraph's closing boundary was removed.
+            const sliceToBeDeleted = docBeforeStep.slice(from, to);
+            if (from !== pos && sliceToBeDeleted.openStart !== 0) {
+              if (!parent) throw new Error('not possible');
+              const loroDocNode = getLoroNodeFromPMNode(loroDoc, parent);
+              assert(loroDocNode, isLoroDocument);
+
+              const path = loroDoc.getPathToContainer(loroNode.id);
+              const loroIndex = path?.[path.length - 1];
+              if (typeof loroIndex !== 'number') {
+                throw new Error(`Could not find index for loro node: ${loroNode.id}`);
+              }
+
+              const loroNodeBefore = loroDocNode.get('content').get(loroIndex - 1);
+              if (
+                loroNodeBefore &&
+                isContainer(loroNodeBefore) &&
+                isLoroParagraph(loroNodeBefore)
+              ) {
+                const deltaToJoin = loroNode.get('content')?.toDelta() ?? [];
+                const loroTextBefore = loroNodeBefore.get('content');
+
+                const loroList = loroNode.parent();
+                if (!loroList || !isMovableList(loroList)) {
+                  throw new Error(`Could not find target loro list for: ${loroNode.id}`);
+                }
+
+                deltaToJoin.forEach((delta) => {
+                  if (delta.insert) {
+                    loroTextBefore?.push(delta.insert);
+                    Object.entries(delta.attributes ?? {}).forEach(([key, value]) => {
+                      if (!['bold', 'italic', 'underline'].includes(key)) return;
+                      if (value === null) {
+                        loroTextBefore?.unmark(
+                          {
+                            start: loroTextBefore.length - delta.insert.length,
+                            end: loroTextBefore.length,
+                          },
+                          key
+                        );
+                      } else if (value) {
+                        loroTextBefore?.mark(
+                          {
+                            start: loroTextBefore.length - delta.insert.length,
+                            end: loroTextBefore.length,
+                          },
+                          key,
+                          true
+                        );
+                      }
+                    });
+                  }
+                });
+
+                // Delete the merged paragraph from Loro. Also remove any pending AttrStep
+                // for this node (in case it was just created by an earlier step in this
+                // same transaction and hasn't been assigned its Loro ID yet).
+                stepDataByNewlyAddedLoroContainerId.delete(loroNode.id);
+                loroList.delete(loroIndex, 1);
+              }
+            }
+            return false;
+          }
+        } else {
+          // All cases should be covered: node fully inside range, partially overlapping from left, or from right
+          throw new Error(`Unexpected case in nodesBetween`);
+        }
+
+        return true;
+      });
+      // ========== END DELETION PHASE ==========
+
+      // Map positions through this step's changes to find where inserted content ends up
+      const mappedFrom = step.getMap().map(from, -1);
+      const mappedTo = step.getMap().map(to);
+
+      // ========== INSERTION PHASE ==========
+      // Walk through the newly inserted range and create corresponding Loro nodes/content
+      docAfterStep.nodesBetween(mappedFrom, mappedTo, (node, pos, parent, index) => {
+        if (pos >= mappedFrom && pos + node.nodeSize <= mappedTo) {
+          const loroId = node.attrs[LORO_ID_ATTR];
+          if (loroId === LORO_DEFAULT_TEMP_ID) {
+            if (!parent) throw new Error('not possible');
+            if (node.type.name === 'paragraph') {
+              const loroParent = getLoroNodeFromPMNode(loroDoc, parent);
+              assert(loroParent, isLoroDocument);
+
+              const newLoroParagraph = loroParent
+                .get('content')
+                .insertContainer(index, new LoroMap());
+              newLoroParagraph.set('type', 'paragraph');
+              const loroText = newLoroParagraph.setContainer('content', new LoroText());
+              node.forEach((child) => {
+                const { text, marks } = child;
+                if (text) {
+                  loroText.push(text);
+                  marks.forEach((mark) => {
+                    loroText.mark(
+                      {
+                        start: loroText.length - text.length,
+                        end: loroText.length,
+                      },
+                      mark.type.name,
+                      true
+                    );
+                  });
+                }
+              });
+
+              // Queue an AttrStep to set this paragraph's Loro ID attribute.
+              // This links the ProseMirror node to its Loro counterpart for future syncing.
+              simulatedTr = simulatedTr.step(new AttrStep(pos, LORO_ID_ATTR, newLoroParagraph.id));
+              stepDataByNewlyAddedLoroContainerId.set(newLoroParagraph.id, {
+                pos,
+                stepIndex,
+              });
+            }
+          }
+          return false;
+        } else if (pos < mappedFrom) {
+          const loroNode = getLoroNodeFromPMNode(loroDoc, node);
+          if (loroNode && isLoroParagraph(loroNode)) {
+            const sliceStart = mappedFrom - pos - 1;
+            const sliceLength = Math.min(node.content.size - sliceStart, mappedTo - mappedFrom);
+
+            const loroText = loroNode.get('content');
+            node.slice(sliceStart, sliceStart + sliceLength).content.forEach((child, offset) => {
+              const { text, marks } = child;
+              if (text) {
+                loroText?.insert(sliceStart + offset, text);
+                marks.forEach((mark) => {
+                  loroText?.mark(
+                    {
+                      start: sliceStart + offset,
+                      end: sliceStart + offset + text.length,
+                    },
+                    mark.type.name,
+                    true
+                  );
+                });
+              }
+            });
+
+            // Trim excess content from Loro text if the PM node is now shorter.
+            // This occurs when inserting a block (e.g., pressing Enter) splits the paragraph,
+            // pushing trailing content into a newly created paragraph (handled in case 3 below).
+            if (node.content.size < (loroText?.length ?? 0)) {
+              loroText?.delete(node.content.size, loroText.length - node.content.size);
+            }
+
+            return false;
+          }
+        } else if (pos + node.nodeSize > mappedTo) {
+          const sliceStart = 0;
+          const sliceLength = Math.min(node.content.size, mappedTo - pos - 1);
+
+          const loroId = node.attrs[LORO_ID_ATTR];
+          // Determine if we need to create a new Loro node. This is required when:
+          // 1. The node has a temporary ID (newly created in PM, not yet in Loro), or
+          // 2. The node shares the same Loro ID as its previous sibling (happens when a paragraph
+          //    is split - both halves initially reference the same Loro node).
+          const previousNode = index > 0 ? parent?.child(index - 1) : null;
+          if (loroId === LORO_DEFAULT_TEMP_ID || previousNode?.attrs[LORO_ID_ATTR] === loroId) {
+            if (!parent) throw new Error('not possible');
+            if (node.type.name === 'paragraph') {
+              const loroParent = getLoroNodeFromPMNode(loroDoc, parent);
+              assert(loroParent, isLoroDocument);
+
+              const newLoroParagraph = loroParent
+                .get('content')
+                .insertContainer(index, new LoroMap());
+              newLoroParagraph.set('type', 'paragraph');
+              const loroText = newLoroParagraph.setContainer('content', new LoroText());
+              node.forEach((child) => {
+                const { text, marks } = child;
+                if (text) {
+                  loroText.push(text);
+                  marks.forEach((mark) => {
+                    loroText.mark(
+                      {
+                        start: loroText.length - text.length,
+                        end: loroText.length,
+                      },
+                      mark.type.name,
+                      true
+                    );
+                  });
+                }
+              });
+
+              // Queue an AttrStep to assign the Loro ID to this new paragraph node
+              simulatedTr = simulatedTr.step(new AttrStep(pos, LORO_ID_ATTR, newLoroParagraph.id));
+              stepDataByNewlyAddedLoroContainerId.set(newLoroParagraph.id, {
+                pos,
+                stepIndex,
+              });
+            }
+            return false;
+          }
+
+          const loroNode = getLoroNodeFromPMNode(loroDoc, node);
+          if (!loroNode) {
+            return false;
+          }
+
+          if (isLoroParagraph(loroNode)) {
+            node.slice(sliceStart, sliceStart + sliceLength).content.forEach((child, offset) => {
+              const { text, marks } = child;
+              if (text) {
+                loroNode.get('content')?.insert(offset, text);
+                marks.forEach((mark) => {
+                  loroNode.get('content')?.mark(
+                    {
+                      start: offset,
+                      end: offset + text.length,
+                    },
+                    mark.type.name,
+                    true
+                  );
+                });
+              }
+            });
+            return false;
+          }
+        } else {
+          // All cases should be covered: node fully inside range, partially overlapping from left, or from right
+          throw new Error(`Unexpected case in nodesBetween`);
+        }
+        return true;
+      });
+      // ========== END INSERTION PHASE ==========
+    }
+
+    if (step instanceof AddMarkStep || step instanceof RemoveMarkStep) {
+      const { from, to, mark } = step;
+      docBeforeStep.nodesBetween(from, to, (node, pos) => {
+        if (pos >= from && pos + node.nodeSize <= to) {
+          const loroNode = getLoroNodeFromPMNode(loroDoc, node);
+          if (loroNode && isLoroParagraph(loroNode)) {
+            if (step instanceof AddMarkStep) {
+              loroNode
+                .get('content')
+                ?.mark({ start: 0, end: node.content.size }, mark.type.name, true);
+            } else if (step instanceof RemoveMarkStep) {
+              loroNode.get('content')?.unmark({ start: 0, end: node.content.size }, mark.type.name);
+            }
+            return false;
+          }
+        } else if (pos < from) {
+          const loroNode = getLoroNodeFromPMNode(loroDoc, node);
+          if (loroNode && isLoroParagraph(loroNode)) {
+            const sliceStart = from - pos - 1;
+            const sliceLength = Math.min(node.content.size - sliceStart, to - from);
+            if (step instanceof AddMarkStep) {
+              loroNode
+                .get('content')
+                ?.mark({ start: sliceStart, end: sliceStart + sliceLength }, mark.type.name, true);
+            } else if (step instanceof RemoveMarkStep) {
+              loroNode
+                .get('content')
+                ?.unmark({ start: sliceStart, end: sliceStart + sliceLength }, mark.type.name);
+            }
+            return false;
+          }
+        } else if (pos + node.nodeSize > to) {
+          const loroNode = getLoroNodeFromPMNode(loroDoc, node);
+          if (loroNode && isLoroParagraph(loroNode)) {
+            const sliceStart = 0;
+            const sliceLength = Math.min(node.content.size, to - pos - 1);
+            if (step instanceof AddMarkStep) {
+              loroNode
+                .get('content')
+                ?.mark({ start: sliceStart, end: sliceStart + sliceLength }, mark.type.name, true);
+            } else if (step instanceof RemoveMarkStep) {
+              loroNode
+                .get('content')
+                ?.unmark({ start: sliceStart, end: sliceStart + sliceLength }, mark.type.name);
+            }
+            return false;
+          }
+        } else {
+          // All cases should be covered: node fully inside range, partially overlapping from left, or from right
+          throw new Error(`Unexpected case in nodesBetween`);
+        }
+        return true;
+      });
+    }
+  });
+
+  // Append all queued AttrSteps to the original transaction.
+  // These steps assign Loro IDs to newly created ProseMirror paragraph nodes.
+  // We map positions through subsequent steps to account for document changes since the node was created.
+  stepDataByNewlyAddedLoroContainerId.forEach((data, id) => {
+    tr.step(new AttrStep(tr.mapping.slice(data.stepIndex + 1).map(data.pos), LORO_ID_ATTR, id));
+  });
+  loroDoc.commit();
+
+  return tr;
+}
+
+/**
+ * Creates a ProseMirror plugin that syncs changes FROM Loro TO ProseMirror.
+ *
+ * This handles the reverse direction of updateLoroDocGivenTransaction:
+ * - When remote peers make changes (imported via Loro)
+ * - When undo/redo operations are performed in Loro
+ *
+ * The plugin subscribes to Loro document events and translates them into
+ * ProseMirror transactions to keep the editor view in sync.
+ *
+ * @param loroDoc - The Loro CRDT document to subscribe to
+ * @param pmSchema - The ProseMirror schema for creating nodes and marks
+ * @returns A ProseMirror plugin that handles Loro-to-PM synchronization
+ */
 export function loroSyncAdvanced(loroDoc: LoroDoc, pmSchema: Schema) {
   return new Plugin({
     key: pluginKey,
-    state: {
-      init: () => {
-        // loroIdsToAssign is a map of loro ids to the positions in the pm doc where they should be assigned
-        const loroIdsToAssign = new Map<ContainerID, number>();
-        return loroIdsToAssign;
-      },
-      apply: (tr, loroIdsToAssign, _oldState, _newState) => {
-        if (!tr.docChanged) {
-          // no changes to the pm doc, no need to update loro doc
-          return loroIdsToAssign;
-        }
-
-        if (tr.getMeta('loro-import')) {
-          return loroIdsToAssign;
-        }
-
-        const newLoroIdsToAssign = new Map<ContainerID, number>();
-        tr.steps.forEach((step, stepIndex) => {
-          const docBeforeStep = tr.docs[stepIndex];
-          const docAfterStep = tr.docs[stepIndex + 1] ?? tr.doc;
-
-          if (step instanceof ReplaceStep) {
-            let { from, to } = step;
-
-            /** Begin: Delete content from loro nodes */
-            docBeforeStep.nodesBetween(from, to, (node, pos, parent) => {
-              if (pos >= from && pos + node.nodeSize <= to) {
-                const loroNode = getLoroNodeFromPMNode(loroDoc, node);
-                if (loroNode) {
-                  if (!parent) throw new Error('not possible');
-                  const loroParent = getLoroNodeFromPMNode(loroDoc, parent);
-                  assert(loroParent, isLoroDocument);
-
-                  const indexForLoroNode = loroParent
-                    .get('content')
-                    .toArray()
-                    .findIndex((item) => item.id === loroNode.id);
-                  loroParent.get('content').delete(indexForLoroNode, 1);
-                  return false;
-                }
-              } else if (pos < from) {
-                const loroNode = getLoroNodeFromPMNode(loroDoc, node);
-                if (loroNode && isLoroParagraph(loroNode)) {
-                  const cutStart = from - pos - 1; // -1 to account for block node opening tag
-                  const cutLength = Math.min(node.content.size - cutStart, to - from);
-                  loroNode.get('content')?.delete(cutStart, cutLength);
-                  return false;
-                }
-              } else if (pos + node.nodeSize > to) {
-                const loroNode = getLoroNodeFromPMNode(loroDoc, node);
-                if (loroNode && isLoroParagraph(loroNode)) {
-                  const cutStart = 0;
-                  const cutLength = Math.min(node.content.size, to - pos - 1); // - 1 to account for block node opening tag
-                  loroNode.get('content')?.delete(cutStart, cutLength);
-                  // ? should we combine this paragraph with its prev sibling?
-                  // my speculation is that only when the slice cuts off previous paragraph (making its end open)
-                  // so how do we detect that? -> from !== pos and the content before 'from' is open to be merged
-                  const sliceToBeDeleted = docBeforeStep.slice(from, to);
-                  if (from !== pos && sliceToBeDeleted.openStart !== 0) {
-                    if (!parent) throw new Error('not possible');
-                    const loroDocNode = getLoroNodeFromPMNode(loroDoc, parent);
-                    assert(loroDocNode, isLoroDocument);
-                    const indexForLoroNode = loroDocNode
-                      .get('content')
-                      .toArray()
-                      .findIndex((item) => item.id === loroNode.id);
-                    const loroNodeBefore = loroDocNode.get('content').get(indexForLoroNode - 1);
-                    if (
-                      loroNodeBefore &&
-                      isContainer(loroNodeBefore) &&
-                      isLoroParagraph(loroNodeBefore)
-                    ) {
-                      const deltaToJoin = loroNode.get('content')?.toDelta() ?? [];
-                      const loroTextBefore = loroNodeBefore.get('content');
-
-                      const loroList = loroNode.parent();
-                      if (!loroList || !isMovableList(loroList)) {
-                        throw new Error(`Could not find target loro list for: ${loroNode.id}`);
-                      }
-
-                      deltaToJoin.forEach((delta) => {
-                        if (delta.insert) {
-                          loroTextBefore?.push(delta.insert);
-                          Object.entries(delta.attributes ?? {}).forEach(([key, value]) => {
-                            if (!['bold', 'italic', 'underline'].includes(key)) return;
-                            if (value === null) {
-                              loroTextBefore?.unmark(
-                                {
-                                  start: loroTextBefore.length - delta.insert.length,
-                                  end: loroTextBefore.length,
-                                },
-                                key
-                              );
-                            } else if (value) {
-                              loroTextBefore?.mark(
-                                {
-                                  start: loroTextBefore.length - delta.insert.length,
-                                  end: loroTextBefore.length,
-                                },
-                                key,
-                                true
-                              );
-                            }
-                          });
-                        }
-                      });
-
-                      // delete loroNode
-                      loroList.delete(indexForLoroNode, 1);
-                    }
-                  }
-                  return false;
-                }
-              } else {
-                // not possible, branches above should have handled all cases
-                throw new Error(`Unexpected case in nodesBetween`);
-              }
-
-              return true;
-            });
-            /** End: Delete content from loro nodes */
-
-            const mappedFrom = step.getMap().map(from, -1);
-            const mappedTo = step.getMap().map(to);
-            /** Begin: Insert content into loro nodes */
-            docAfterStep.nodesBetween(mappedFrom, mappedTo, (node, pos, parent, index) => {
-              if (pos >= mappedFrom && pos + node.nodeSize <= mappedTo) {
-                const loroId = node.attrs[LORO_ID_ATTR];
-                if (loroId === LORO_DEFAULT_TEMP_ID) {
-                  if (!parent) throw new Error('not possible');
-                  if (node.type.name === 'paragraph') {
-                    const loroParent = getLoroNodeFromPMNode(loroDoc, parent);
-                    assert(loroParent, isLoroDocument);
-
-                    const newLoroParagraph = loroParent
-                      .get('content')
-                      .insertContainer(index, new LoroMap());
-                    newLoroParagraph.set('type', 'paragraph');
-                    const loroText = newLoroParagraph.setContainer('content', new LoroText());
-                    node.forEach((child) => {
-                      const { text, marks } = child;
-                      if (text) {
-                        loroText.push(text);
-                        marks.forEach((mark) => {
-                          loroText.mark(
-                            {
-                              start: loroText.length - text.length,
-                              end: loroText.length,
-                            },
-                            mark.type.name,
-                            true
-                          );
-                        });
-                      }
-                    });
-
-                    newLoroIdsToAssign.set(
-                      newLoroParagraph.id,
-                      tr.mapping.slice(stepIndex + 1).map(pos)
-                    );
-                  }
-                }
-                return false;
-              } else if (pos < mappedFrom) {
-                const loroNode = getLoroNodeFromPMNode(loroDoc, node);
-                if (loroNode && isLoroParagraph(loroNode)) {
-                  const sliceStart = mappedFrom - pos - 1;
-                  const sliceLength = Math.min(
-                    node.content.size - sliceStart,
-                    mappedTo - mappedFrom
-                  );
-
-                  const loroText = loroNode.get('content');
-                  node
-                    .slice(sliceStart, sliceStart + sliceLength)
-                    .content.forEach((child, offset) => {
-                      const { text, marks } = child;
-                      if (text) {
-                        loroText?.insert(sliceStart + offset, text);
-                        marks.forEach((mark) => {
-                          loroText?.mark(
-                            {
-                              start: sliceStart + offset,
-                              end: sliceStart + offset + text.length,
-                            },
-                            mark.type.name,
-                            true
-                          );
-                        });
-                      }
-                    });
-
-                  // after text insertion, there might be extra content in the loro text that needs to be deleted
-                  // this happens when inserting blocks of text which shift the content after the slice into a new
-                  // block. we deal with that in case 3
-                  if (node.content.size < (loroText?.length ?? 0)) {
-                    loroText?.delete(node.content.size, loroText.length - node.content.size);
-                  }
-
-                  return false;
-                }
-              } else if (pos + node.nodeSize > mappedTo) {
-                const sliceStart = 0;
-                const sliceLength = Math.min(node.content.size, mappedTo - pos - 1);
-
-                const loroId = node.attrs[LORO_ID_ATTR];
-                // if its' a temp:id, or it's a repeatd loro id, it means we need to create a new loro node
-                // how do we know if it's a repeated loro id? -> we check if it has the same id as the previous node
-                const previousNode = index > 0 ? parent?.child(index - 1) : null;
-                if (
-                  loroId === LORO_DEFAULT_TEMP_ID ||
-                  previousNode?.attrs[LORO_ID_ATTR] === loroId
-                ) {
-                  if (!parent) throw new Error('not possible');
-                  if (node.type.name === 'paragraph') {
-                    const loroParent = getLoroNodeFromPMNode(loroDoc, parent);
-                    assert(loroParent, isLoroDocument);
-
-                    const newLoroParagraph = loroParent
-                      .get('content')
-                      .insertContainer(index, new LoroMap());
-                    newLoroParagraph.set('type', 'paragraph');
-                    const loroText = newLoroParagraph.setContainer('content', new LoroText());
-                    node.forEach((child) => {
-                      const { text, marks } = child;
-                      if (text) {
-                        loroText.push(text);
-                        marks.forEach((mark) => {
-                          loroText.mark(
-                            {
-                              start: loroText.length - text.length,
-                              end: loroText.length,
-                            },
-                            mark.type.name,
-                            true
-                          );
-                        });
-                      }
-                    });
-
-                    newLoroIdsToAssign.set(
-                      newLoroParagraph.id,
-                      tr.mapping.slice(stepIndex + 1).map(pos)
-                    );
-                  }
-                  return false;
-                }
-
-                const loroNode = getLoroNodeFromPMNode(loroDoc, node);
-                if (!loroNode) {
-                  return false;
-                }
-
-                if (isLoroParagraph(loroNode)) {
-                  node
-                    .slice(sliceStart, sliceStart + sliceLength)
-                    .content.forEach((child, offset) => {
-                      const { text, marks } = child;
-                      if (text) {
-                        loroNode.get('content')?.insert(offset, text);
-                        marks.forEach((mark) => {
-                          loroNode.get('content')?.mark(
-                            {
-                              start: offset,
-                              end: offset + text.length,
-                            },
-                            mark.type.name,
-                            true
-                          );
-                        });
-                      }
-                    });
-                  return false;
-                }
-              } else {
-                // not possible, branches above should have handled all cases
-                throw new Error(`Unexpected case in nodesBetween`);
-              }
-              return true;
-            });
-            /** End: Insert content into loro nodes */
-          }
-
-          if (step instanceof AddMarkStep || step instanceof RemoveMarkStep) {
-            const { from, to, mark } = step;
-            docBeforeStep.nodesBetween(from, to, (node, pos) => {
-              if (pos >= from && pos + node.nodeSize <= to) {
-                const loroNode = getLoroNodeFromPMNode(loroDoc, node);
-                if (loroNode && isLoroParagraph(loroNode)) {
-                  if (step instanceof AddMarkStep) {
-                    loroNode
-                      .get('content')
-                      ?.mark({ start: 0, end: node.content.size }, mark.type.name, true);
-                  } else if (step instanceof RemoveMarkStep) {
-                    loroNode
-                      .get('content')
-                      ?.unmark({ start: 0, end: node.content.size }, mark.type.name);
-                  }
-                  return false;
-                }
-              } else if (pos < from) {
-                const loroNode = getLoroNodeFromPMNode(loroDoc, node);
-                if (loroNode && isLoroParagraph(loroNode)) {
-                  const sliceStart = from - pos - 1;
-                  const sliceLength = Math.min(node.content.size - sliceStart, to - from);
-                  if (step instanceof AddMarkStep) {
-                    loroNode
-                      .get('content')
-                      ?.mark(
-                        { start: sliceStart, end: sliceStart + sliceLength },
-                        mark.type.name,
-                        true
-                      );
-                  } else if (step instanceof RemoveMarkStep) {
-                    loroNode
-                      .get('content')
-                      ?.unmark(
-                        { start: sliceStart, end: sliceStart + sliceLength },
-                        mark.type.name
-                      );
-                  }
-                  return false;
-                }
-              } else if (pos + node.nodeSize > to) {
-                const loroNode = getLoroNodeFromPMNode(loroDoc, node);
-                if (loroNode && isLoroParagraph(loroNode)) {
-                  const sliceStart = 0;
-                  const sliceLength = Math.min(node.content.size, to - pos - 1);
-                  if (step instanceof AddMarkStep) {
-                    loroNode
-                      .get('content')
-                      ?.mark(
-                        { start: sliceStart, end: sliceStart + sliceLength },
-                        mark.type.name,
-                        true
-                      );
-                  } else if (step instanceof RemoveMarkStep) {
-                    loroNode
-                      .get('content')
-                      ?.unmark(
-                        { start: sliceStart, end: sliceStart + sliceLength },
-                        mark.type.name
-                      );
-                  }
-                  return false;
-                }
-              } else {
-                // not possible, branches above should have handled all cases
-                throw new Error(`Unexpected case in nodesBetween`);
-              }
-              return true;
-            });
-          }
-        });
-
-        console.debug(`after apply:`, JSON.stringify(loroDoc.toJSON(), null, 2));
-        loroDoc.commit();
-        return !newLoroIdsToAssign.size && !loroIdsToAssign.size
-          ? loroIdsToAssign
-          : newLoroIdsToAssign;
-      },
-    },
-    appendTransaction: (_transactions, _oldState, newState) => {
-      const tr = newState.tr;
-      const pluginState = pluginKey.getState(newState);
-      if (pluginState?.size) {
-        pluginState.forEach((pos, id) => {
-          tr.setNodeAttribute(pos, LORO_ID_ATTR, id);
-        });
-      }
-      return tr.steps.length ? tr : null;
-    },
     view: (view) => {
       const unsubscribe = loroDoc.subscribe(({ events, by, origin }) => {
         let shouldProceed = false;
@@ -407,7 +431,10 @@ export function loroSyncAdvanced(loroDoc: LoroDoc, pmSchema: Schema) {
           return;
         }
 
-        const tr = view.state.tr.setMeta('loro-import', true);
+        const tr = view.state.tr.setMeta('sync-loro-to-pm', {
+          origin,
+          by,
+        });
 
         events.forEach(({ diff, path }) => {
           let node = tr.doc;
@@ -418,9 +445,9 @@ export function loroSyncAdvanced(loroDoc: LoroDoc, pmSchema: Schema) {
               pos += Fragment.fromArray(node.children.slice(0, p)).size;
               node = node.child(p);
             } else if (p === 'docRoot') {
-              // do nothing
+              // Root level - position stays at 0
             } else if (p === 'content') {
-              // skip
+              // 'content' is a structural key in Loro, not a position - skip it
             }
           });
 
@@ -464,13 +491,16 @@ export function loroSyncAdvanced(loroDoc: LoroDoc, pmSchema: Schema) {
               throw new Error(`Target node mismatch: ${node.type.name} !== paragraph`);
             }
 
-            pos += 1; // account for block node opening tag
+            // Add 1 to position to skip past the paragraph's opening tag in ProseMirror's flat position space
+            pos += 1;
             diff.diff.forEach((delta) => {
               if (delta.insert) {
                 const from = tr.mapping.slice(startingStepIndex).map(pos);
                 const to = tr.mapping.slice(startingStepIndex).map(pos + delta.insert.length);
 
-                // notice, we can't use tr.insertText because it auto inherits marks from previous text node
+                // Use tr.insert() instead of tr.insertText() because insertText() automatically
+                // inherits marks from the preceding text node, which would incorrectly apply
+                // styles that weren't in the Loro delta
                 tr.insert(from, pmSchema.text(delta.insert));
                 Object.entries(delta.attributes ?? {}).forEach(([key, value]) => {
                   if (!['bold', 'italic', 'underline'].includes(key)) return;

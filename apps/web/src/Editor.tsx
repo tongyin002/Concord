@@ -5,7 +5,7 @@ import { keymap } from 'prosemirror-keymap';
 import { baseKeymap, toggleMark } from 'prosemirror-commands';
 import { LoroDoc, LoroMap, LoroMovableList, LoroText } from 'loro-crdt';
 import { loroDocToPMDoc, pmSchema } from './loroToPm';
-import { loroSyncAdvanced } from './loroSync';
+import { loroSyncAdvanced, updateLoroDocGivenTransaction } from './loroSync';
 import { collabCaret } from './collabCaret';
 import { PresenceStore } from './presenceStore';
 import { redo, undo, undoRedo } from './undoRedo';
@@ -123,15 +123,21 @@ const Editor = ({
           'Mod-z': undo,
           'Mod-Shift-z': redo,
         }),
-        loroSyncAdvanced(loroDoc, pmSchema),
         collabCaret(loroDoc, store, user),
         undoRedo(loroDoc),
       ],
     });
 
-    editorRef.current = new EditorView(editorContainerRef.current, {
+    const editorView = new EditorView(editorContainerRef.current, {
       state,
+      dispatchTransaction(tr) {
+        const updatedTr = updateLoroDocGivenTransaction(tr, loroDoc, editorView.state);
+        const newState = editorView.state.apply(updatedTr);
+        editorView.updateState(newState);
+      },
+      plugins: [loroSyncAdvanced(loroDoc, pmSchema)],
     });
+    editorRef.current = editorView;
 
     const unsubscribe = loroDoc.subscribeLocalUpdates(onUpdate);
 

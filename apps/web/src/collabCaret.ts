@@ -5,7 +5,6 @@ import { getLoroNodeFromPMNode } from './pmToLoro';
 import { isCursorEqual, isLoroDocument, isLoroParagraph } from './loroUtils';
 import { PresenceStore } from './presenceStore';
 import { Fragment, ResolvedPos } from 'prosemirror-model';
-import { LORO_ID_ATTR, LORO_DEFAULT_TEMP_ID } from './loroToPm';
 
 type PresenceUpdateMeta = {
   updated: Set<string>;
@@ -122,11 +121,6 @@ function createDecorationsForPeer(
 
 export function getLoroCursorFromPMPosition(position: ResolvedPos, loroDoc: LoroDoc) {
   const anchorNode = position.node();
-  // This is because loro sync plugin will append an additional transaction to update the doc
-  // we can ignore it
-  if (anchorNode.attrs[LORO_ID_ATTR] === LORO_DEFAULT_TEMP_ID) {
-    return null;
-  }
 
   const loroAnchor = getLoroNodeFromPMNode(loroDoc, anchorNode);
   if (loroAnchor) {
@@ -185,7 +179,7 @@ export function collabCaret(
           return decorationSet.remove(decorationsToRemove).add(newState.doc, newDecorations);
         }
 
-        if (!tr.getMeta('loro-import')) {
+        if (!tr.getMeta('sync-loro-to-pm')) {
           const { selection } = newState;
 
           const anchorCursor = getLoroCursorFromPMPosition(selection.$anchor, loroDoc);
