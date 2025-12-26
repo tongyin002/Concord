@@ -3,8 +3,6 @@ import 'prosemirror-view/style/prosemirror.css';
 import { LoroDoc, LoroText, isContainer, LoroMap } from 'loro-crdt';
 import { isLoroText, isMovableList } from './loroUtils';
 
-const objectUnicode = '\uFFFC';
-
 export const LORO_ID_ATTR = 'loro-id';
 // This is the default identifier for newly created pm node which doesn't have a matching loro node yet
 export const LORO_DEFAULT_TEMP_ID = 'temp:id';

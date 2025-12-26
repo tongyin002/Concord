@@ -1,32 +1,15 @@
 import { authClient } from 'lib/auth-client';
-import { accountsQuery, schema, useQuery, Zero, ZeroProvider } from 'lib/zero-client';
+import { schema, Zero, ZeroProvider } from 'lib/zero-client';
 import { useCallback, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
-import Editor from './Editor';
-
-const ZeroComponent = ({ userId, userName }: { userId: string; userName: string }) => {
-  const [accounts] = useQuery(accountsQuery(userId));
-  return (
-    <div>
-      {`this User ${userName} has ${accounts.length} accounts `}
-      {accounts.map((account) => (
-        <span key={account.id}>{account.scope}</span>
-      ))}
-    </div>
-  );
-};
-
-const { useSession, token } = authClient;
 
 const App = () => {
-  const { data, isPending, error } = useSession();
-  const zero = useMemo(() => {
-    if (!data?.user) return undefined;
+  const { data, isPending, error } = authClient.useSession();
 
-    return new Zero({
-      userID: data.user.id,
+  const zero = useMemo(() => {
+    return new Zero<typeof schema>({
+      userID: data?.user.id ?? 'anon',
       server: 'http://localhost:4848',
-      auth: () => token().then(({ data }) => data?.token),
       schema,
     });
   }, [data?.user]);
@@ -42,30 +25,24 @@ const App = () => {
     authClient.signOut();
   }, []);
 
-  if (isPending) {
-    return <div>Loading...</div>;
-  }
+  const content = useMemo(() => {
+    console.debug(`what is error?`, error);
+    if (isPending && !error) {
+      return <div>Loading...</div>;
+    }
 
-  if (data) {
-    if (!zero) return null;
-    return (
-      <ZeroProvider zero={zero}>
+    if (data) {
+      return (
         <div>
-          <span>{data.user.email}</span>
-          <button onClick={onSignOut}>Sign out</button>
+          Logged in <button onClick={onSignOut}>Sign out</button>
         </div>
-        <ZeroComponent userId={data.user.id} userName={data.user.name} />
-        <Editor />
-      </ZeroProvider>
-    );
-  }
+      );
+    }
 
-  return (
-    <div>
-      <button onClick={onSignIn}>Continue with Github</button>
-      {error ? <span>error...</span> : null}
-    </div>
-  );
+    return <button onClick={onSignIn}>Continue with Github</button>;
+  }, [data, error, isPending, onSignIn, onSignOut]);
+
+  return <ZeroProvider zero={zero}>{content}</ZeroProvider>;
 };
 
 createRoot(document.getElementById('app')!).render(<App />);
