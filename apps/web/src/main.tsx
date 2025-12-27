@@ -26,7 +26,6 @@ const App = () => {
   }, []);
 
   const content = useMemo(() => {
-    console.debug(`what is error?`, error);
     if (isPending && !error) {
       return <div>Loading...</div>;
     }
