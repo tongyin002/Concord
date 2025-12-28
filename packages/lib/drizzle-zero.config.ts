@@ -18,6 +18,17 @@ export default drizzleZeroConfig(drizzleSchema, {
       // omit columns to exclude them
       email: true,
     },
+    account: {
+      id: true,
+      accountId: true,
+      userId: true,
+    },
+    doc: {
+      id: true,
+      title: true,
+      content: true,
+      ownerId: true,
+    },
   },
 
   // Specify the casing style to use for the schema.

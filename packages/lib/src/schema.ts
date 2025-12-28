@@ -92,3 +92,19 @@ export const accountRelations = relations(account, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+export const doc = pgTable('doc', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  ownerId: text('owner_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+});
+
+export const docRelations = relations(doc, ({ one }) => ({
+  owner: one(user, {
+    fields: [doc.ownerId],
+    references: [user.id],
+  }),
+}));
