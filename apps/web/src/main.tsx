@@ -1,16 +1,28 @@
 import { authClient } from 'lib/auth-client';
-import { schema, Zero, ZeroProvider } from 'lib/zero-client';
+import { queries } from 'lib/zero';
+import { useQuery, Zero, zeroBaseOptions, ZeroProvider } from 'lib/zero-client';
 import { useCallback, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
+
+const TestZero = () => {
+  const [data, status] = useQuery(queries.doc.all());
+
+  return null;
+};
 
 const App = () => {
   const { data, isPending, error } = authClient.useSession();
 
   const zero = useMemo(() => {
-    return new Zero<typeof schema>({
-      userID: data?.user.id ?? 'anon',
-      server: 'http://localhost:4848',
-      schema,
+    if (!data) return null;
+
+    const userID = data.session.userId;
+    return new Zero({
+      ...zeroBaseOptions,
+      userID,
+      context: {
+        userID,
+      },
     });
   }, [data?.user]);
 
@@ -25,23 +37,26 @@ const App = () => {
     authClient.signOut();
   }, []);
 
-  const content = useMemo(() => {
-    if (isPending && !error) {
-      return <div>Loading...</div>;
-    }
-
-    if (data) {
-      return (
+  if (zero) {
+    return (
+      <ZeroProvider zero={zero}>
         <div>
           Logged in <button onClick={onSignOut}>Sign out</button>
+          <TestZero />
         </div>
-      );
-    }
+      </ZeroProvider>
+    );
+  }
 
-    return <button onClick={onSignIn}>Continue with Github</button>;
-  }, [data, error, isPending, onSignIn, onSignOut]);
+  if (isPending) {
+    return <div>Authenticating...</div>;
+  }
 
-  return <ZeroProvider zero={zero}>{content}</ZeroProvider>;
+  return error ? (
+    <div>Error: {error.message}</div>
+  ) : (
+    <button onClick={onSignIn}>Continue with Github</button>
+  );
 };
 
 createRoot(document.getElementById('app')!).render(<App />);
