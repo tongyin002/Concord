@@ -1,14 +1,8 @@
 import { authClient } from 'lib/auth-client';
-import { queries } from 'lib/zero';
-import { useQuery, Zero, zeroBaseOptions, ZeroProvider } from 'lib/zero-client';
+import { Zero, zeroBaseOptions, ZeroProvider } from 'lib/zero-client';
 import { useCallback, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
-
-const TestZero = () => {
-  const [data, status] = useQuery(queries.doc.all());
-
-  return null;
-};
+import HomePage from './Home';
 
 const App = () => {
   const { data, isPending, error } = authClient.useSession();
@@ -40,10 +34,7 @@ const App = () => {
   if (zero) {
     return (
       <ZeroProvider zero={zero}>
-        <div>
-          Logged in <button onClick={onSignOut}>Sign out</button>
-          <TestZero />
-        </div>
+        <HomePage />
       </ZeroProvider>
     );
   }

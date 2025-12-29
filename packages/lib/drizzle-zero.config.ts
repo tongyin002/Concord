@@ -17,6 +17,7 @@ export default drizzleZeroConfig(drizzleSchema, {
       name: true,
       // omit columns to exclude them
       email: true,
+      image: true,
     },
     account: {
       id: true,

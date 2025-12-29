@@ -72,6 +72,11 @@ const userTable = {
       optional: false,
       customType: null as unknown as string,
     },
+    image: {
+      type: 'string',
+      optional: true,
+      customType: null as unknown as string,
+    },
   },
   primaryKey: ['id'],
 } as const;

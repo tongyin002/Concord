@@ -3,7 +3,11 @@ import { zql } from './zero-schema.gen';
 
 export const queries = defineQueries({
   doc: {
-    all: defineQuery(({ ctx: { userID } }) => zql.doc.where('ownerId', userID)),
+    all: defineQuery(() => zql.doc.limit(20)),
+    mine: defineQuery(({ ctx: { userID } }) => zql.doc.where('ownerId', userID).limit(1)),
+  },
+  user: {
+    me: defineQuery(({ ctx: { userID } }) => zql.user.where('id', userID).limit(1)),
   },
 });
 

@@ -1,7 +1,17 @@
 import { auth } from 'lib/auth';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { handleQueryRequest, mustGetQuery, queries, schema, ZeroContext } from 'lib/zero';
+import {
+  handleMutateRequest,
+  handleQueryRequest,
+  mustGetMutator,
+  mustGetQuery,
+  mutators,
+  queries,
+  schema,
+  ZeroContext,
+  zeroDBProvider,
+} from 'lib/zero';
 
 const app = new Hono<{ Variables: ZeroContext }>();
 
@@ -28,16 +38,29 @@ app.use('*', async (c, next) => {
   return next();
 });
 
-app.on(['POST'], 'api/zero/get-queries', async (c) => {
-  const result = await handleQueryRequest(
-    (name, args) => {
-      const query = mustGetQuery(queries, name);
-      return query.fn({ args, ctx: { userID: c.get('userID') } });
-    },
-    schema,
-    c.req.raw
-  );
-  return c.json(result);
-});
+app
+  .on(['POST'], 'api/zero/get-queries', async (c) => {
+    const result = await handleQueryRequest(
+      (name, args) => {
+        const query = mustGetQuery(queries, name);
+        return query.fn({ args, ctx: { userID: c.get('userID') } });
+      },
+      schema,
+      c.req.raw
+    );
+    return c.json(result);
+  })
+  .on(['POST'], 'api/zero/mutate', async (c) => {
+    const result = await handleMutateRequest(
+      zeroDBProvider,
+      (transact) =>
+        transact((tx, name, args) => {
+          const mutator = mustGetMutator(mutators, name);
+          return mutator.fn({ tx, args, ctx: { userID: c.get('userID') } });
+        }),
+      c.req.raw
+    );
+    return c.json(result);
+  });
 
 export default app;

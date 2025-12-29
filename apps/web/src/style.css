@@ -1,1 +1,11 @@
 @import 'tailwindcss';
+
+/* Prosemirror editor styles */
+.ProseMirror {
+    height: 100%;
+    padding: 24px;
+}
+
+.ProseMirror-focused {
+    outline: none;
+}
