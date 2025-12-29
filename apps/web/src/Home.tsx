@@ -112,7 +112,11 @@ const HomePage = () => {
               <p className="text-sm font-semibold text-slate-800 truncate">
                 {me?.name ?? 'Guest User'}
               </p>
-              <p className="text-xs text-slate-400 truncate">{me?.email ?? 'Not signed in'}</p>
+              <p className="text-xs text-slate-400 truncate">
+                {me?.email
+                  ? `${me.email[0]}${'*'.repeat(me.email.indexOf('@') - 1)}@${'*'.repeat(me.email.length - me.email.indexOf('@') - 2)}${me.email[me.email.length - 1]}`
+                  : 'Not signed in'}
+              </p>
             </div>
           </div>
         </div>
@@ -200,7 +204,11 @@ const HomePage = () => {
             </header>
             <EditorContainer
               doc={selectedDoc}
-              user={{ name: me?.name ?? 'test_user', color: 'red' }}
+              // get random color in hex format
+              user={{
+                name: me?.name ?? 'test_user',
+                color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+              }}
             />
           </div>
         ) : (

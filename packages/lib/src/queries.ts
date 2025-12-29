@@ -18,6 +18,14 @@ export const queries = defineQueries({
   user: {
     me: defineQuery(({ ctx: { userID } }) => zql.user.where('id', userID).limit(1)),
   },
+  awareness: {
+    forDoc: defineQuery(
+      z.object({
+        docId: z.string(),
+      }),
+      ({ args: { docId } }) => zql.awareness.where('docId', docId).orderBy('updatedAt', 'desc')
+    ),
+  },
 });
 
 export type ZeroContext = {

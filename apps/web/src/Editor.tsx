@@ -98,6 +98,7 @@ export const EditorContainer = ({
 }) => {
   const zero = useZero();
   const [operations] = useQuery(queries.docOperation.forDoc({ docId: id }));
+  const [awareness] = useQuery(queries.awareness.forDoc({ docId: id }));
 
   const importContent = useCallback((contentString: string, loroDoc: LoroDoc) => {
     loroDoc.import(decodeBase64(contentString));
@@ -129,17 +130,30 @@ export const EditorContainer = ({
     loroDoc.importBatch(operations.map((op) => decodeBase64(op.operation)));
   }, [operations, loroDoc]);
 
-  const ephemeralStore = useRef<PresenceStore>(new PresenceStore(loroDoc.peerIdStr));
+  const presenceStore = useRef<PresenceStore>(new PresenceStore(loroDoc.peerIdStr));
   useEffect(() => {
-    const unsubscribe = ephemeralStore.current.subscribeLocalUpdates((update) => {
-      //loroDocFromContent.import(update);
+    const unsubscribe = presenceStore.current.subscribeLocalUpdates((update) => {
+      zero.mutate(
+        mutators.awareness.upsert({
+          peerId: loroDoc.peerIdStr,
+          docId: id,
+          awareness: encodeBase64(update),
+        })
+      );
     });
 
     return () => {
       unsubscribe();
-      ephemeralStore.current?.destroy();
+      presenceStore.current?.destroy();
     };
   }, []);
+
+  useEffect(() => {
+    if (awareness.length === 0) return;
+    awareness.forEach(({ awareness }) => {
+      presenceStore.current?.apply(decodeBase64(awareness));
+    });
+  }, [awareness]);
 
   const onLocalUpdate = useCallback(
     (update: Uint8Array) => {
@@ -156,7 +170,7 @@ export const EditorContainer = ({
   );
 
   return (
-    <Editor loroDoc={loroDoc} onUpdate={onLocalUpdate} store={ephemeralStore.current} user={user} />
+    <Editor loroDoc={loroDoc} onUpdate={onLocalUpdate} store={presenceStore.current} user={user} />
   );
 };
 

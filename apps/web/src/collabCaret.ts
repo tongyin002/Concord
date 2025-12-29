@@ -86,7 +86,7 @@ function createDecorationsForPeer(
           'whitespace-nowrap'
         );
         userDiv.style.backgroundColor = `color-mix(in srgb, ${cursorColor} 50%, white)`;
-        userDiv.insertBefore(document.createTextNode(`${user?.name ?? 'Unknown'}`), null);
+        userDiv.insertBefore(document.createTextNode(`${peerId ?? 'Unknown'}`), null);
 
         const nonbreakingSpace1 = document.createTextNode('\u2060');
         const nonbreakingSpace2 = document.createTextNode('\u2060');

@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { pgTable, text, timestamp, boolean, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, index, primaryKey } from 'drizzle-orm/pg-core';
 
 // Auth schema
 export const user = pgTable('user', {
@@ -125,6 +125,29 @@ export const docOperation = pgTable('doc_operation', {
 export const docOperationRelations = relations(docOperation, ({ one }) => ({
   doc: one(doc, {
     fields: [docOperation.docId],
+    references: [doc.id],
+  }),
+}));
+
+export const awareness = pgTable(
+  'awareness',
+  {
+    peerId: text('peer_id').notNull(),
+    docId: text('doc_id')
+      .notNull()
+      .references(() => doc.id, { onDelete: 'cascade' }),
+    awareness: text('awareness').notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.peerId, table.docId] })]
+);
+
+export const awarenessRelations = relations(awareness, ({ one }) => ({
+  doc: one(doc, {
+    fields: [awareness.docId],
     references: [doc.id],
   }),
 }));
