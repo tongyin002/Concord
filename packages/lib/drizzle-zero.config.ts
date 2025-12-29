@@ -30,6 +30,12 @@ export default drizzleZeroConfig(drizzleSchema, {
       content: true,
       ownerId: true,
     },
+    docOperation: {
+      id: true,
+      docId: true,
+      operation: true,
+      createdAt: true,
+    },
   },
 
   // Specify the casing style to use for the schema.

@@ -7,6 +7,7 @@ import { Avatar } from '@base-ui/react/avatar';
 import { Input } from '@base-ui/react/input';
 import { useDocIdFromUrl } from './useDocIdFromUrl';
 import { EditorContainer } from './Editor';
+import { LoroDoc, LoroMap, LoroMovableList, LoroText } from 'loro-crdt';
 
 const HomePage = () => {
   const zero = useZero();
@@ -19,11 +20,20 @@ const HomePage = () => {
   const [selectedDocId, setSelectedDocId] = useDocIdFromUrl();
 
   const onCreate = useCallback(() => {
+    const loroDoc = new LoroDoc();
+    const docRoot = loroDoc.getMap('docRoot');
+    docRoot.set('type', 'doc');
+    const docContent = docRoot.setContainer('content', new LoroMovableList());
+    const paragraph = docContent.pushContainer(new LoroMap());
+    paragraph.set('type', 'paragraph');
+    paragraph.setContainer('content', new LoroText());
+    const snapshot = loroDoc.export({ mode: 'snapshot' });
+
     zero.mutate(
       mutators.doc.create({
         id: crypto.randomUUID(),
         title,
-        content: '',
+        content: btoa(String.fromCharCode(...snapshot)),
       })
     );
   }, [title]);
@@ -85,7 +95,7 @@ const HomePage = () => {
       {/* Sidebar */}
       <aside className="w-64 h-full flex flex-col bg-white border-r border-slate-200 shadow-sm">
         {/* Sidebar Header - User Avatar */}
-        <div className="p-4 border-b border-slate-100">
+        <div className="h-[72px] shrink-0 px-4 border-b border-slate-200 flex items-center">
           <div className="flex items-center gap-3">
             <Avatar.Root className="inline-flex size-10 items-center justify-center overflow-hidden rounded-full bg-linear-to-br from-teal-400 to-cyan-500 ring-2 ring-white shadow-md">
               <Avatar.Image
@@ -185,11 +195,11 @@ const HomePage = () => {
       <main className="flex-1 h-full overflow-hidden bg-white">
         {selectedDoc ? (
           <div className="h-full flex flex-col">
-            <header className="px-6 py-4 border-b border-slate-100 bg-white">
+            <header className="h-[72px] shrink-0 px-6 border-b border-slate-200 bg-white flex items-center">
               <h1 className="text-lg font-semibold text-slate-900">{selectedDoc.title}</h1>
             </header>
             <EditorContainer
-              content={selectedDoc.content}
+              doc={selectedDoc}
               user={{ name: me?.name ?? 'test_user', color: 'red' }}
             />
           </div>

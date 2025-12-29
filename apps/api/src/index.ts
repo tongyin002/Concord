@@ -50,7 +50,7 @@ app
     );
     return c.json(result);
   })
-  .on(['POST'], 'api/zero/mutate', async (c) => {
+  .on(['POST'], 'api/zero/push', async (c) => {
     const result = await handleMutateRequest(
       zeroDBProvider,
       (transact) =>

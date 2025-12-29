@@ -54,6 +54,35 @@ const docTable = {
   },
   primaryKey: ['id'],
 } as const;
+const docOperationTable = {
+  name: 'docOperation',
+  columns: {
+    id: {
+      type: 'string',
+      optional: false,
+      customType: null as unknown as string,
+    },
+    docId: {
+      type: 'string',
+      optional: false,
+      customType: null as unknown as string,
+      serverName: 'doc_id',
+    },
+    operation: {
+      type: 'string',
+      optional: false,
+      customType: null as unknown as string,
+    },
+    createdAt: {
+      type: 'number',
+      optional: true,
+      customType: null as unknown as number,
+      serverName: 'created_at',
+    },
+  },
+  primaryKey: ['id'],
+  serverName: 'doc_operation',
+} as const;
 const userTable = {
   name: 'user',
   columns: {
@@ -90,6 +119,16 @@ const accountRelationships = {
     },
   ],
 } as const;
+const docOperationRelationships = {
+  doc: [
+    {
+      sourceField: ['docId'],
+      destField: ['id'],
+      destSchema: 'doc',
+      cardinality: 'one',
+    },
+  ],
+} as const;
 const docRelationships = {
   owner: [
     {
@@ -97,6 +136,14 @@ const docRelationships = {
       destField: ['id'],
       destSchema: 'user',
       cardinality: 'one',
+    },
+  ],
+  operations: [
+    {
+      sourceField: ['id'],
+      destField: ['docId'],
+      destSchema: 'docOperation',
+      cardinality: 'many',
     },
   ],
 } as const;
@@ -118,10 +165,12 @@ export const schema = {
   tables: {
     account: accountTable,
     doc: docTable,
+    docOperation: docOperationTable,
     user: userTable,
   },
   relationships: {
     account: accountRelationships,
+    docOperation: docOperationRelationships,
     doc: docRelationships,
     user: userRelationships,
   },
@@ -148,6 +197,13 @@ export type Account = Row['account'];
  * @deprecated Use Row["doc"] instead from "@rocicorp/zero".
  */
 export type Doc = Row['doc'];
+/**
+ * Represents a row from the "docOperation" table.
+ * This type is auto-generated from your Drizzle schema definition.
+ *
+ * @deprecated Use Row["docOperation"] instead from "@rocicorp/zero".
+ */
+export type DocOperation = Row['docOperation'];
 /**
  * Represents a row from the "user" table.
  * This type is auto-generated from your Drizzle schema definition.

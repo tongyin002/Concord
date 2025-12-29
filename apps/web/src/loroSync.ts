@@ -413,13 +413,11 @@ export function loroSyncAdvanced(loroDoc: LoroDoc, pmSchema: Schema) {
         let shouldProceed = false;
         switch (by) {
           case 'import':
+          case 'checkout':
             shouldProceed = true;
             break;
           case 'local':
             shouldProceed = origin === 'undo';
-            break;
-          case 'checkout':
-            shouldProceed = false;
             break;
           default: {
             const exhaustiveCheck: never = by;

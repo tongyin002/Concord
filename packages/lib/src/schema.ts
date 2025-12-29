@@ -102,9 +102,29 @@ export const doc = pgTable('doc', {
     .references(() => user.id, { onDelete: 'cascade' }),
 });
 
-export const docRelations = relations(doc, ({ one }) => ({
+export const docRelations = relations(doc, ({ one, many }) => ({
   owner: one(user, {
     fields: [doc.ownerId],
     references: [user.id],
+  }),
+  operations: many(docOperation),
+}));
+
+export const docOperation = pgTable('doc_operation', {
+  id: text('id').primaryKey(),
+  docId: text('doc_id')
+    .notNull()
+    .references(() => doc.id, { onDelete: 'cascade' }),
+  operation: text('operation').notNull(),
+  createdAt: timestamp('created_at')
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export const docOperationRelations = relations(docOperation, ({ one }) => ({
+  doc: one(doc, {
+    fields: [docOperation.docId],
+    references: [doc.id],
   }),
 }));
