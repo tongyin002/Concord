@@ -14,7 +14,7 @@
     "dev": {
       "cache": false,
       "persistent": true,
-      "env": ["BETTER_AUTH_*", "GITHUB_CLIENT_*", "ZERO_*"]
+      "env": ["BETTER_AUTH_*", "GITHUB_CLIENT_*", "ZERO_*", "CLOUDFLARE_*"]
     },
     "format": {},
     "format:check": {}

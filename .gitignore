@@ -12,6 +12,7 @@ public/dist
 .vscode
 .zed
 .pnpm-store
+.wrangler
 
 # Playwright simulation auth state
 .auth-state.json

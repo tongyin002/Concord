@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cf-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-12-18",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Hyperdrive binding for Postgres connection
+  // Create with: npx wrangler hyperdrive create my-hyperdrive --connection-string="postgres://..."
+  // For local dev, set localConnectionString to use your local Postgres
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "your-hyperdrive-id-here"
+    }
+  ]
+}
+

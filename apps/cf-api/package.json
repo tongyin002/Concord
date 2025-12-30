@@ -1,0 +1,18 @@
+{
+  "name": "cf-api",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify",
+    "cf-typegen": "wrangler types --env-file ./../../.env --env-interface CloudflareBindings"
+  },
+  "dependencies": {
+    "hono": "^4.9.5",
+    "lib": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251230.0",
+    "wrangler": "^4.54.0"
+  }
+}

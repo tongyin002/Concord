@@ -5,7 +5,9 @@
   "type": "module",
   "exports": {
     "./auth": "./src/auth.ts",
+    "./auth-cf": "./src/auth-cf.ts",
     "./auth-client": "./src/auth-client.ts",
+    "./db-cf": "./src/db-cf.ts",
     "./zero": "./src/zero.ts",
     "./zero-client": "./src/zero-client.ts"
   },
