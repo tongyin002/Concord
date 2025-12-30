@@ -100,6 +100,9 @@ export const EditorContainer = ({
   const [operations] = useQuery(queries.docOperation.forDoc({ docId: id }));
   const [awareness] = useQuery(queries.awareness.forDoc({ docId: id }));
 
+  // Track which operation IDs have been imported to avoid re-importing
+  const importedOperationIds = useRef<Set<string>>(new Set());
+
   const importContent = useCallback((contentString: string, loroDoc: LoroDoc) => {
     loroDoc.import(decodeBase64(contentString));
   }, []);
@@ -119,15 +122,27 @@ export const EditorContainer = ({
     // to avoid re-importing when the useEffect runs
     if (operations.length > 0) {
       loroDoc.importBatch(operations.map((op) => decodeBase64(op.operation)));
+      // Mark all initial operations as imported
+      operations.forEach((op) => importedOperationIds.current.add(op.id));
     }
 
     return loroDoc;
   });
 
-  // Import operations from the server
+  // Import only NEW operations from the server (avoid re-importing)
   useEffect(() => {
     if (operations.length === 0) return;
-    loroDoc.importBatch(operations.map((op) => decodeBase64(op.operation)));
+
+    // Filter to only operations we haven't imported yet
+    const newOperations = operations.filter((op) => !importedOperationIds.current.has(op.id));
+
+    if (newOperations.length === 0) return;
+
+    // Import only the new operations
+    loroDoc.importBatch(newOperations.map((op) => decodeBase64(op.operation)));
+
+    // Mark them as imported
+    newOperations.forEach((op) => importedOperationIds.current.add(op.id));
   }, [operations, loroDoc]);
 
   const presenceStore = useRef<PresenceStore>(new PresenceStore(loroDoc.peerIdStr));

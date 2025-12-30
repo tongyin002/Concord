@@ -53,10 +53,19 @@ export function undoRedo(loroDoc: LoroDoc) {
       });
       undoManager.setOnPop((_isUndo, { cursors }) => {
         // restore the cursors to the original position
-        if (cursors.length !== 2) return;
+        if (cursors.length !== 2) {
+          // Free any cursors even if we can't use them
+          cursors.forEach((cursor) => cursor?.free());
+          return;
+        }
         const [anchorCursor, headCursor] = cursors;
         const anchorPosition = getPMPositionFromLoroCursor(anchorCursor, loroDoc, view.state);
         const headPosition = getPMPositionFromLoroCursor(headCursor, loroDoc, view.state);
+
+        // Free cursors after use to prevent memory leaks
+        anchorCursor?.free();
+        headCursor?.free();
+
         if (anchorPosition === null || headPosition === null) return;
 
         if (anchorPosition === 0 && headPosition === view.state.doc.nodeSize) {

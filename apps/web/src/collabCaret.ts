@@ -142,14 +142,16 @@ export function collabCaret(
     key: pluginKey,
     state: {
       init: (_config, state) => {
-        return DecorationSet.create(
-          state.doc,
-          store
-            .getAll()
-            .flatMap(({ peerId, anchor, head, user }) =>
-              createDecorationsForPeer(loroDoc, state, peerId, anchor, head, user)
-            )
+        const presenceData = store.getAll();
+        const decorations = presenceData.flatMap(({ peerId, anchor, head, user }) =>
+          createDecorationsForPeer(loroDoc, state, peerId, anchor, head, user)
         );
+        // Free cursors after creating decorations to prevent memory leaks
+        presenceData.forEach(({ anchor, head }) => {
+          anchor?.free();
+          head?.free();
+        });
+        return DecorationSet.create(state.doc, decorations);
       },
       apply: (tr, decorationSet, _oldState, newState) => {
         const presenceUpdate = tr.getMeta('loro-presence-update') as PresenceUpdateMeta | undefined;
@@ -167,13 +169,20 @@ export function collabCaret(
 
           // Create new decorations for updated peers
           const newDecorations: Decoration[] = [];
+          const presenceData = store.getAll();
 
-          store.getAll().forEach(({ peerId, anchor, head, user }) => {
+          presenceData.forEach(({ peerId, anchor, head, user }) => {
             if (updated.has(peerId)) {
               newDecorations.push(
                 ...createDecorationsForPeer(loroDoc, newState, peerId, anchor, head, user)
               );
             }
+          });
+
+          // Free all cursors after creating decorations to prevent memory leaks
+          presenceData.forEach(({ anchor, head }) => {
+            anchor?.free();
+            head?.free();
           });
 
           return decorationSet.remove(decorationsToRemove).add(newState.doc, newDecorations);
@@ -192,8 +201,11 @@ export function collabCaret(
           ) {
             store.setLocal(anchorCursor ?? null, headCursor ?? null, user);
           }
+          // Free all cursors to prevent memory leaks
           anchorCursor?.free();
           headCursor?.free();
+          existingStatus?.anchor?.free();
+          existingStatus?.head?.free();
         }
 
         return decorationSet.map(tr.mapping, tr.doc);
@@ -236,7 +248,7 @@ export function collabCaret(
               return;
             }
 
-            timeoutId = setTimeout(() => {
+            timeoutId = window.setTimeout(() => {
               if (view.isDestroyed) return;
               const tr = view.state.tr.setMeta('loro-presence-update', pendingChanges);
               view.dispatch(tr);
