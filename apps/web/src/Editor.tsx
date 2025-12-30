@@ -66,7 +66,7 @@ const Editor = ({
       unsubscribe();
       editorRef.current?.destroy();
     };
-  }, [loroDoc]);
+  }, [loroDoc, onUpdate, user, store]);
 
   return <div ref={editorContainerRef} className="h-full overflow-y-scroll" />;
 };
@@ -87,7 +87,7 @@ const encodeBase64 = (uint8Array: Uint8Array): string => {
 };
 
 export const EditorContainer = ({
-  doc: { id, content },
+  doc,
   user,
 }: {
   doc: {
@@ -97,17 +97,13 @@ export const EditorContainer = ({
   user: { name: string; color: string };
 }) => {
   const zero = useZero();
-  const [operations] = useQuery(queries.docOperation.forDoc({ docId: id }));
-  const [awareness] = useQuery(queries.awareness.forDoc({ docId: id }));
+  const [operations] = useQuery(queries.docOperation.forDoc({ docId: doc.id }));
+  const [awareness] = useQuery(queries.awareness.forDoc({ docId: doc.id }), {});
 
   // Track which operation IDs have been imported to avoid re-importing
   const importedOperationIds = useRef<Set<string>>(new Set());
 
-  const importContent = useCallback((contentString: string, loroDoc: LoroDoc) => {
-    loroDoc.import(decodeBase64(contentString));
-  }, []);
-
-  const [loroDoc] = useState<LoroDoc>(() => {
+  const genLoroDoc = useCallback(() => {
     const loroDoc = new LoroDoc();
     loroDoc.configTextStyle({
       bold: { expand: 'none' },
@@ -115,7 +111,7 @@ export const EditorContainer = ({
       underline: { expand: 'none' },
     });
     loroDoc.setRecordTimestamp(true);
-    importContent(content, loroDoc);
+    loroDoc.import(decodeBase64(doc.content));
 
     // Import initial operations and track their IDs
     // These are imported before the subscription exists, so we track them
@@ -127,7 +123,13 @@ export const EditorContainer = ({
     }
 
     return loroDoc;
-  });
+    // oxlint-disable-next-line exhaustive-deps
+  }, [doc.content]);
+
+  const [loroDoc, setLoroDoc] = useState<LoroDoc>(genLoroDoc);
+  useEffect(() => {
+    setLoroDoc(genLoroDoc);
+  }, [genLoroDoc]);
 
   // Import only NEW operations from the server (avoid re-importing)
   useEffect(() => {
@@ -147,11 +149,12 @@ export const EditorContainer = ({
 
   const presenceStore = useRef<PresenceStore>(new PresenceStore(loroDoc.peerIdStr));
   useEffect(() => {
-    const unsubscribe = presenceStore.current.subscribeLocalUpdates((update) => {
+    const presence = presenceStore.current;
+    const unsubscribe = presence.subscribeLocalUpdates((update) => {
       zero.mutate(
         mutators.awareness.upsert({
           peerId: loroDoc.peerIdStr,
-          docId: id,
+          docId: doc.id,
           awareness: encodeBase64(update),
         })
       );
@@ -159,9 +162,9 @@ export const EditorContainer = ({
 
     return () => {
       unsubscribe();
-      presenceStore.current?.destroy();
+      presence?.destroy();
     };
-  }, []);
+  }, [zero, loroDoc.peerIdStr, doc.id]);
 
   useEffect(() => {
     if (awareness.length === 0) return;
@@ -176,12 +179,12 @@ export const EditorContainer = ({
       zero.mutate(
         mutators.docOperation.create({
           id: crypto.randomUUID(),
-          docId: id,
+          docId: doc.id,
           operation: encodeBase64(update),
         })
       );
     },
-    [zero]
+    [zero, doc.id]
   );
 
   return (

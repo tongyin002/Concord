@@ -17,6 +17,7 @@
     ],
     "unicorn/prefer-array-find": "error",
     "oxc/no-accumulating-spread": "error",
+    "react/exhaustive-deps": "error",
     "react/no-array-index-key": "error",
     "react-perf/jsx-no-new-function-as-prop": "error",
     "react-perf/jsx-no-jsx-as-prop": "error",

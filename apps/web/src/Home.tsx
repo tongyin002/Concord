@@ -17,6 +17,9 @@ const HomePage = () => {
   const me = useMemo(() => user?.[0] ?? null, [user]);
 
   const [title, setTitle] = useState('');
+  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setTitle(e.target.value);
+  }, []);
   const [selectedDocId, setSelectedDocId] = useDocIdFromUrl();
 
   const onCreate = useCallback(() => {
@@ -36,7 +39,15 @@ const HomePage = () => {
         content: btoa(String.fromCharCode(...snapshot)),
       })
     );
-  }, [title]);
+  }, [title, zero]);
+
+  const editorUser = useMemo(
+    () => ({
+      name: me?.name ?? 'test_user',
+      color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+    }),
+    [me]
+  );
 
   const newDocDialog = useMemo(() => {
     return (
@@ -63,7 +74,7 @@ const HomePage = () => {
                 <Input
                   placeholder="Enter document title..."
                   className="w-full h-11 px-4 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 focus:bg-white transition-all"
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={handleTitleChange}
                 />
               </Dialog.Description>
               <div className="flex justify-end gap-3">
@@ -83,7 +94,7 @@ const HomePage = () => {
         </Dialog.Portal>
       </Dialog.Root>
     );
-  }, [title, onCreate]);
+  }, [title, onCreate, handleTitleChange]);
 
   const selectedDoc = useMemo(
     () => docs?.find((d) => d.id === selectedDocId) ?? null,
@@ -135,6 +146,7 @@ const HomePage = () => {
                 docs.map((doc) => (
                   <button
                     key={doc.id}
+                    // oxlint-disable-next-line jsx-no-new-function-as-prop
                     onClick={() => setSelectedDocId(doc.id)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 group ${
                       selectedDocId === doc.id
@@ -202,14 +214,7 @@ const HomePage = () => {
             <header className="h-[72px] shrink-0 px-6 border-b border-slate-200 bg-white flex items-center">
               <h1 className="text-lg font-semibold text-slate-900">{selectedDoc.title}</h1>
             </header>
-            <EditorContainer
-              doc={selectedDoc}
-              // get random color in hex format
-              user={{
-                name: me?.name ?? 'test_user',
-                color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
-              }}
-            />
+            <EditorContainer doc={selectedDoc} user={editorUser} />
           </div>
         ) : (
           <div className="h-full flex items-center justify-center bg-slate-50/30">

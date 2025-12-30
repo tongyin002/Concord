@@ -34,4 +34,3 @@ export function useDocIdFromUrl() {
 
   return [docId, setDocIdWithUrl] as const;
 }
-
