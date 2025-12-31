@@ -1,3 +1,4 @@
+import { DurableObject } from 'cloudflare:workers';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { createAuth } from 'lib/auth-cf';
@@ -88,4 +89,45 @@ app.post('/api/zero/push', async (c) => {
   return c.json(result);
 });
 
+app.get('/ws', async (c) => {
+  // grab doc id from query params
+  const docId = c.req.query('docId');
+  if (!docId) {
+    return c.json({ error: 'docId is required' }, 400);
+  }
+  const id = c.env.COLLABORATION_DO.idFromName(docId);
+  const stub = c.env.COLLABORATION_DO.get(id);
+  return stub.fetch(c.req.raw);
+});
+
 export default app;
+
+export class CollaborationDO extends DurableObject<CloudflareBindings> {
+  constructor(state: DurableObjectState, env: CloudflareBindings) {
+    super(state, env);
+  }
+
+  fetch(request: Request): Response | Promise<Response> {
+    const webSocketPair = new WebSocketPair();
+    const { 0: client, 1: server } = webSocketPair;
+    this.ctx.acceptWebSocket(server);
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  async webSocketMessage(ws: WebSocket, message: ArrayBuffer) {
+    this.ctx.getWebSockets().forEach((activeWs) => {
+      if (activeWs !== ws) {
+        activeWs.send(message);
+      }
+    });
+  }
+
+  webSocketClose?(
+    ws: WebSocket,
+    code: number,
+    reason: string,
+    wasClean: boolean
+  ): void | Promise<void> {
+    ws.close(code, reason);
+  }
+}

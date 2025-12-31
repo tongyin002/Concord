@@ -9,8 +9,7 @@ import { loroSyncAdvanced, updateLoroDocGivenTransaction } from './loroSync';
 import { collabCaret } from './collabCaret';
 import { PresenceStore } from './presenceStore';
 import { redo, undo, undoRedo } from './undoRedo';
-import { useQuery, useZero } from 'lib/zero-client';
-import { mutators } from '../../../packages/lib/src/mutators';
+import { useQuery } from 'lib/zero-client';
 import { queries } from '../../../packages/lib/src/queries';
 
 const Editor = ({
@@ -96,12 +95,7 @@ export const EditorContainer = ({
   };
   user: { name: string; color: string };
 }) => {
-  const zero = useZero();
   const [operations] = useQuery(queries.docOperation.forDoc({ docId: doc.id }));
-  const [awareness] = useQuery(queries.awareness.forDoc({ docId: doc.id }), {});
-
-  // Track which operation IDs have been imported to avoid re-importing
-  const importedOperationIds = useRef<Set<string>>(new Set());
 
   const genLoroDoc = useCallback(() => {
     const loroDoc = new LoroDoc();
@@ -118,8 +112,6 @@ export const EditorContainer = ({
     // to avoid re-importing when the useEffect runs
     if (operations.length > 0) {
       loroDoc.importBatch(operations.map((op) => decodeBase64(op.operation)));
-      // Mark all initial operations as imported
-      operations.forEach((op) => importedOperationIds.current.add(op.id));
     }
 
     return loroDoc;
@@ -131,61 +123,40 @@ export const EditorContainer = ({
     setLoroDoc(genLoroDoc);
   }, [genLoroDoc]);
 
-  // Import only NEW operations from the server (avoid re-importing)
+  const websocketRef = useRef<WebSocket>(new WebSocket(`http://localhost:8787/ws?docId=${doc.id}`));
   useEffect(() => {
-    if (operations.length === 0) return;
+    const websocket = new WebSocket(`http://localhost:8787/ws?docId=${doc.id}`);
+    websocketRef.current = websocket;
 
-    // Filter to only operations we haven't imported yet
-    const newOperations = operations.filter((op) => !importedOperationIds.current.has(op.id));
+    websocket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'update') {
+        loroDoc.import(decodeBase64(data.data));
+      } else if (data.type === 'awareness') {
+        presenceStore.current?.apply(decodeBase64(data.data));
+      }
+    };
 
-    if (newOperations.length === 0) return;
-
-    // Import only the new operations
-    loroDoc.importBatch(newOperations.map((op) => decodeBase64(op.operation)));
-
-    // Mark them as imported
-    newOperations.forEach((op) => importedOperationIds.current.add(op.id));
-  }, [operations, loroDoc]);
+    return () => websocket.close();
+  }, [doc.id, loroDoc]);
 
   const presenceStore = useRef<PresenceStore>(new PresenceStore(loroDoc.peerIdStr));
   useEffect(() => {
     const presence = presenceStore.current;
     const unsubscribe = presence.subscribeLocalUpdates((update) => {
-      zero.mutate(
-        mutators.awareness.upsert({
-          peerId: loroDoc.peerIdStr,
-          docId: doc.id,
-          awareness: encodeBase64(update),
-        })
-      );
+      websocketRef.current.send(JSON.stringify({ type: 'awareness', data: encodeBase64(update) }));
     });
 
     return () => {
       unsubscribe();
       presence?.destroy();
     };
-  }, [zero, loroDoc.peerIdStr, doc.id]);
+  }, []);
 
-  useEffect(() => {
-    if (awareness.length === 0) return;
-    awareness.forEach(({ awareness }) => {
-      presenceStore.current?.apply(decodeBase64(awareness));
-    });
-  }, [awareness]);
-
-  const onLocalUpdate = useCallback(
-    (update: Uint8Array) => {
-      // send over the network
-      zero.mutate(
-        mutators.docOperation.create({
-          id: crypto.randomUUID(),
-          docId: doc.id,
-          operation: encodeBase64(update),
-        })
-      );
-    },
-    [zero, doc.id]
-  );
+  const onLocalUpdate = useCallback((update: Uint8Array) => {
+    // send over the network
+    websocketRef.current.send(JSON.stringify({ type: 'update', data: encodeBase64(update) }));
+  }, []);
 
   return (
     <Editor loroDoc={loroDoc} onUpdate={onLocalUpdate} store={presenceStore.current} user={user} />

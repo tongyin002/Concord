@@ -13,6 +13,22 @@
       "binding": "HYPERDRIVE",
       "id": "your-hyperdrive-id-here"
     }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "COLLABORATION_DO",
+        "class_name": "CollaborationDO"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": [
+        "CollaborationDO"
+      ]
+    }
   ]
 }
 
