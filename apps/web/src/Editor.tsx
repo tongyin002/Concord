@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { EditorState } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
 import { keymap } from 'prosemirror-keymap';
@@ -9,8 +9,7 @@ import { loroSyncAdvanced, updateLoroDocGivenTransaction } from './loroSync';
 import { collabCaret } from './collabCaret';
 import { PresenceStore } from './presenceStore';
 import { redo, undo, undoRedo } from './undoRedo';
-import { useQuery } from 'lib/zero-client';
-import { queries } from '../../../packages/lib/src/queries';
+import { decodeBase64, encodeBase64 } from 'lib/sharedUtils';
 
 const Editor = ({
   loroDoc,
@@ -70,21 +69,6 @@ const Editor = ({
   return <div ref={editorContainerRef} className="h-full overflow-y-scroll" />;
 };
 
-/** Decode a base64 string to Uint8Array */
-const decodeBase64 = (base64: string): Uint8Array => {
-  const byteString = atob(base64);
-  const uint8Array = new Uint8Array(byteString.length);
-  for (let i = 0; i < byteString.length; i++) {
-    uint8Array[i] = byteString.charCodeAt(i);
-  }
-  return uint8Array;
-};
-
-const encodeBase64 = (uint8Array: Uint8Array): string => {
-  const byteString = String.fromCharCode(...uint8Array);
-  return btoa(byteString);
-};
-
 export const EditorContainer = ({
   doc,
   user,
@@ -95,33 +79,23 @@ export const EditorContainer = ({
   };
   user: { name: string; color: string };
 }) => {
-  const [operations] = useQuery(queries.docOperation.forDoc({ docId: doc.id }));
-
-  const genLoroDoc = useCallback(() => {
-    const loroDoc = new LoroDoc();
-    loroDoc.configTextStyle({
+  const loroDoc = useMemo(() => {
+    const newLoroDoc = new LoroDoc();
+    newLoroDoc.configTextStyle({
       bold: { expand: 'none' },
       italic: { expand: 'none' },
       underline: { expand: 'none' },
     });
-    loroDoc.setRecordTimestamp(true);
-    loroDoc.import(decodeBase64(doc.content));
-
-    // Import initial operations and track their IDs
-    // These are imported before the subscription exists, so we track them
-    // to avoid re-importing when the useEffect runs
-    if (operations.length > 0) {
-      loroDoc.importBatch(operations.map((op) => decodeBase64(op.operation)));
-    }
-
-    return loroDoc;
+    newLoroDoc.setRecordTimestamp(true);
+    newLoroDoc.import(decodeBase64(doc.content));
+    newLoroDoc.toJSON();
+    return newLoroDoc;
     // oxlint-disable-next-line exhaustive-deps
-  }, [doc.content]);
+  }, [doc.id]);
 
-  const [loroDoc, setLoroDoc] = useState<LoroDoc>(genLoroDoc);
   useEffect(() => {
-    setLoroDoc(genLoroDoc);
-  }, [genLoroDoc]);
+    return () => loroDoc.free();
+  }, [loroDoc]);
 
   const websocketRef = useRef<WebSocket>(new WebSocket(`http://localhost:8787/ws?docId=${doc.id}`));
   useEffect(() => {
@@ -153,10 +127,15 @@ export const EditorContainer = ({
     };
   }, []);
 
-  const onLocalUpdate = useCallback((update: Uint8Array) => {
-    // send over the network
-    websocketRef.current.send(JSON.stringify({ type: 'update', data: encodeBase64(update) }));
-  }, []);
+  const onLocalUpdate = useCallback(
+    (update: Uint8Array) => {
+      // send over the network
+      websocketRef.current.send(
+        JSON.stringify({ type: 'update', docId: doc.id, data: encodeBase64(update) })
+      );
+    },
+    [doc.id]
+  );
 
   return (
     <Editor loroDoc={loroDoc} onUpdate={onLocalUpdate} store={presenceStore.current} user={user} />

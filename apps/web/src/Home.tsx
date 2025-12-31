@@ -9,10 +9,10 @@ import { useDocIdFromUrl } from './useDocIdFromUrl';
 import { EditorContainer } from './Editor';
 import { LoroDoc, LoroMap, LoroMovableList, LoroText } from 'loro-crdt';
 
-const HomePage = () => {
-  const zero = useZero();
-  const [docs] = useQuery(queries.doc.all());
-  const [user] = useQuery(queries.user.me());
+const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
+   const zero = useZero();
+   const [docs] = useQuery(queries.doc.all());
+   const [user] = useQuery(queries.user.me());
 
   const me = useMemo(() => user?.[0] ?? null, [user]);
 
@@ -200,10 +200,29 @@ const HomePage = () => {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-3 border-t border-slate-100">
+        <div className="p-3 border-t border-slate-100 space-y-3">
           <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-400">
             <span>{docs?.length ?? 0} documents</span>
           </div>
+          <button
+            onClick={onSignOut}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 transition-colors duration-150 border border-slate-200 shadow-sm hover:shadow hover:border-slate-300"
+          >
+            <svg
+              className="w-4 h-4 text-slate-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              />
+            </svg>
+            Sign Out
+          </button>
         </div>
       </aside>
 

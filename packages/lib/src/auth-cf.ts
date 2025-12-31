@@ -6,7 +6,7 @@ import type { DrizzleDB } from './db-cf';
 interface AuthEnv {
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
-  BETTER_AUTH_URL?: string;
+  BETTER_AUTH_URL: string;
 }
 
 /**
@@ -14,9 +14,20 @@ interface AuthEnv {
  * Must be called per-request with the env bindings and db instance.
  */
 export function createAuth(db: DrizzleDB, env: AuthEnv) {
+  console.log(
+    'BETTER_AUTH_URL',
+    env.BETTER_AUTH_URL,
+    env.GITHUB_CLIENT_ID,
+    env.GITHUB_CLIENT_SECRET
+  );
   return betterAuth({
     baseURL: env.BETTER_AUTH_URL,
-    trustedOrigins: ['http://localhost:5173', 'http://localhost:8787'],
+    trustedOrigins: [
+      'http://localhost:5173',
+      'http://localhost:8787',
+      'https://localhost:4848',
+      'https://localhost:3000',
+    ],
     database: drizzleAdapter(db, {
       provider: 'pg',
       schema,
