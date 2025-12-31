@@ -21,6 +21,16 @@ export const mutators = defineMutators({
         });
       }
     ),
+    delete: defineMutator(
+      z.object({
+        id: z.string(),
+      }),
+      async ({ tx, args: { id } }) => {
+        await tx.mutate.doc.delete({
+          id,
+        });
+      }
+    ),
     flushUpdates: defineMutator(
       z.object({
         docId: z.string(),

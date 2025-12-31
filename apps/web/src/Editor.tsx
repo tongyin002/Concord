@@ -93,6 +93,11 @@ export const EditorContainer = ({
     // oxlint-disable-next-line exhaustive-deps
   }, [doc.id]);
 
+  // if content is updated, import it
+  useEffect(() => {
+    loroDoc.import(decodeBase64(doc.content));
+  }, [doc.content, loroDoc]);
+
   useEffect(() => {
     return () => loroDoc.free();
   }, [loroDoc]);

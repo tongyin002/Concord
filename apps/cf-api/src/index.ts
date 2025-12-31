@@ -130,6 +130,9 @@ export default app;
 export class CollaborationDO extends DurableObject<CloudflareBindings> {
   // Worker URL for internal API calls
   private readonly workerUrl = 'http://localhost:8787';
+  // In-memory buffer for pending updates
+  private pendingUpdates: Array<{ type: string; docId: string; data: string }> = [];
+  private alarmScheduled = false;
 
   constructor(state: DurableObjectState, env: CloudflareBindings) {
     super(state, env);
@@ -141,11 +144,9 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
     this.ctx.acceptWebSocket(server);
 
     // Send pending updates to the new client
-    this.ctx.storage.list<{ type: string; docId: string; data: string }>().then((updatesMap) => {
-      updatesMap.values().forEach((value) => {
-        server.send(JSON.stringify(value));
-      });
-    });
+    for (const update of this.pendingUpdates) {
+      server.send(JSON.stringify(update));
+    }
 
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -158,64 +159,65 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
       }
     });
 
-    // Parse the message - handle both string and ArrayBuffer
+    // Parse the message
     let parsed: { type: string; docId: string; data: string } | null = null;
 
     try {
       parsed = JSON.parse(message);
     } catch {
-      // Invalid JSON, skip storage
+      // Invalid JSON, skip
       return;
     }
 
     if (parsed?.type === 'update' && parsed.docId && parsed.data) {
-      await this.ctx.storage.put(crypto.randomUUID(), {
+      // Store in memory
+      this.pendingUpdates.push({
         type: parsed.type,
         docId: parsed.docId,
         data: parsed.data,
       });
 
-      this.ctx.storage.getAlarm().then((existingAlarm) => {
-        if (!existingAlarm) {
-          this.ctx.storage.setAlarm(Date.now() + 30000);
-        }
-      });
+      // Schedule alarm if not already scheduled
+      if (!this.alarmScheduled) {
+        this.alarmScheduled = true;
+        await this.ctx.storage.setAlarm(Date.now() + 20000);
+      }
     }
   }
 
   async alarm() {
-    console.log('alarm fired');
-    const updatesMap = await this.ctx.storage.list<{ type: string; docId: string; data: string }>();
+    console.log('alarm fired, pending updates:', this.pendingUpdates.length);
 
-    if (updatesMap.size === 0) {
-      return; // Nothing to flush
+    if (this.pendingUpdates.length === 0) {
+      this.alarmScheduled = false;
+      return;
     }
 
-    let theDocId: string = '';
-    const updates: string[] = [];
-
-    for (const value of updatesMap.values()) {
-      theDocId = value.docId;
-      updates.push(value.data);
-    }
+    const updates = [...this.pendingUpdates];
+    // Clear in-memory buffer after successful flush
+    this.pendingUpdates = [];
+    const theDocId = updates[0].docId;
 
     // Call the internal flush endpoint
     const response = await fetch(`${this.workerUrl}/api/internal/flush-updates`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ docId: theDocId, updates }),
+      body: JSON.stringify({
+        docId: theDocId,
+        updates: updates.map((u) => u.data),
+      }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Failed to flush updates:', errorText);
       // Reschedule alarm to retry later
-      await this.ctx.storage.setAlarm(Date.now() + 30000);
+      this.alarmScheduled = true;
+      await this.ctx.storage.setAlarm(Date.now() + 20000);
       return;
     }
 
-    // Clear storage after successful flush
-    this.ctx.storage.deleteAll();
+    this.alarmScheduled = false;
   }
 
   webSocketClose?(

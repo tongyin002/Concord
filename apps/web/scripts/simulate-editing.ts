@@ -45,7 +45,7 @@ const CONFIG = {
   },
 
   // Path to store auth session
-  authStatePath: path.join(process.cwd(), 'scripts', '.auth-state.json'),
+  authStatePath: path.join(process.cwd(), 'apps', 'web', 'scripts', '.auth-state.json'),
 
   // Browser window layout
   windowWidth: 800,
@@ -248,8 +248,8 @@ async function saveAuthState() {
   console.log('⏳ Waiting for you to log in...');
   console.log('   (The script will detect when you reach the home page)\n');
 
-  // Wait until we see the document list or editor (indicating successful login)
-  await page.waitForSelector('[class*="h-screen"]', { timeout: 300000 }); // 5 min timeout
+  // Wait for the authenticated home page (sidebar with user avatar)
+  await page.waitForSelector('aside [class*="rounded-full"]', { timeout: 300000 }); // 5 min timeout
 
   // Give a moment for cookies to settle
   await sleep(2000);

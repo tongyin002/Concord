@@ -7,12 +7,13 @@ import { Avatar } from '@base-ui/react/avatar';
 import { Input } from '@base-ui/react/input';
 import { useDocIdFromUrl } from './useDocIdFromUrl';
 import { EditorContainer } from './Editor';
+import { DocumentListItem } from './DocumentListItem';
 import { LoroDoc, LoroMap, LoroMovableList, LoroText } from 'loro-crdt';
 
 const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
-   const zero = useZero();
-   const [docs] = useQuery(queries.doc.all());
-   const [user] = useQuery(queries.user.me());
+  const zero = useZero();
+  const [docs] = useQuery(queries.doc.all());
+  const [user] = useQuery(queries.user.me());
 
   const me = useMemo(() => user?.[0] ?? null, [user]);
 
@@ -21,6 +22,17 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
     setTitle(e.target.value);
   }, []);
   const [selectedDocId, setSelectedDocId] = useDocIdFromUrl();
+
+  const handleSelectDoc = useCallback((docId: string) => {
+    setSelectedDocId(docId);
+  }, [setSelectedDocId]);
+
+  const handleDeleteDoc = useCallback(
+    (docId: string) => {
+      zero.mutate(mutators.doc.delete({ id: docId }));
+    },
+    [zero]
+  );
 
   const onCreate = useCallback(() => {
     const loroDoc = new LoroDoc();
@@ -144,35 +156,13 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
             <nav className="space-y-0.5">
               {docs && docs.length > 0 ? (
                 docs.map((doc) => (
-                  <button
+                  <DocumentListItem
                     key={doc.id}
-                    // oxlint-disable-next-line jsx-no-new-function-as-prop
-                    onClick={() => setSelectedDocId(doc.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150 group ${
-                      selectedDocId === doc.id
-                        ? 'bg-teal-50 text-teal-700 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                    }`}
-                  >
-                    <svg
-                      className={`w-4 h-4 shrink-0 ${
-                        selectedDocId === doc.id
-                          ? 'text-teal-500'
-                          : 'text-slate-400 group-hover:text-slate-500'
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    <span className="text-sm font-medium truncate">{doc.title || 'Untitled'}</span>
-                  </button>
+                    doc={doc}
+                    isSelected={selectedDocId === doc.id}
+                    onSelect={handleSelectDoc}
+                    onDelete={handleDeleteDoc}
+                  />
                 ))
               ) : (
                 <div className="px-3 py-8 text-center">
