@@ -48,7 +48,7 @@ const App = () => {
       <div className="text-red-500">Error: {error.message}</div>
     </div>
   ) : (
-    <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+    <div className="flex items-center justify-center h-screen bg-linear-to-br from-slate-900 to-slate-800">
       <Button
         onClick={onSignIn}
         className="flex items-center gap-3 px-8 py-3 rounded-lg bg-white text-slate-900 font-semibold hover:bg-slate-50 transition-colors shadow-lg hover:shadow-xl"

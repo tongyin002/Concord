@@ -51,20 +51,4 @@ export const mutators = defineMutators({
       }
     ),
   },
-  docOperation: {
-    create: defineMutator(
-      z.object({
-        id: z.string(),
-        docId: z.string(),
-        operation: z.string(),
-      }),
-      async ({ tx, args: { id, docId, operation } }) => {
-        await tx.mutate.docOperation.insert({
-          docId,
-          id,
-          operation,
-        });
-      }
-    ),
-  },
 });

@@ -25,12 +25,7 @@ const app = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
 app.use(
   '/api/*',
   cors({
-    origin: [
-      'http://localhost:5173',
-      'http://localhost:4848',
-      'http://localhost:8787',
-      'https://localhost:8787',
-    ],
+    origin: ['http://localhost:5173', 'http://localhost:4848', 'http://localhost:8787'],
     allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     maxAge: 600,
@@ -140,10 +135,18 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
     super(state, env);
   }
 
-  fetch(_request: Request): Response | Promise<Response> {
+  async fetch(_request: Request) {
     const webSocketPair = new WebSocketPair();
     const { 0: client, 1: server } = webSocketPair;
     this.ctx.acceptWebSocket(server);
+
+    // Send pending updates to the new client
+    this.ctx.storage.list<{ type: string; docId: string; data: string }>().then((updatesMap) => {
+      updatesMap.values().forEach((value) => {
+        server.send(JSON.stringify(value));
+      });
+    });
+
     return new Response(null, { status: 101, webSocket: client });
   }
 
