@@ -36,12 +36,6 @@ export default drizzleZeroConfig(drizzleSchema, {
       operation: true,
       createdAt: true,
     },
-    awareness: {
-      peerId: true,
-      docId: true,
-      awareness: true,
-      updatedAt: true,
-    },
   },
 
   // Specify the casing style to use for the schema.

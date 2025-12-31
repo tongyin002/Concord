@@ -35,20 +35,4 @@ export const mutators = defineMutators({
       }
     ),
   },
-  awareness: {
-    upsert: defineMutator(
-      z.object({
-        peerId: z.string(),
-        docId: z.string(),
-        awareness: z.string(),
-      }),
-      async ({ tx, args: { peerId, docId, awareness } }) => {
-        await tx.mutate.awareness.upsert({
-          peerId,
-          docId,
-          awareness,
-        });
-      }
-    ),
-  },
 });

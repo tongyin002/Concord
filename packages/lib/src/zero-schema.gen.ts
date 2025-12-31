@@ -27,35 +27,6 @@ const accountTable = {
   },
   primaryKey: ["id"],
 } as const;
-const awarenessTable = {
-  name: "awareness",
-  columns: {
-    peerId: {
-      type: "string",
-      optional: false,
-      customType: null as unknown as string,
-      serverName: "peer_id",
-    },
-    docId: {
-      type: "string",
-      optional: false,
-      customType: null as unknown as string,
-      serverName: "doc_id",
-    },
-    awareness: {
-      type: "string",
-      optional: false,
-      customType: null as unknown as string,
-    },
-    updatedAt: {
-      type: "number",
-      optional: true,
-      customType: null as unknown as number,
-      serverName: "updated_at",
-    },
-  },
-  primaryKey: ["peerId", "docId"],
-} as const;
 const docTable = {
   name: "doc",
   columns: {
@@ -148,16 +119,6 @@ const accountRelationships = {
     },
   ],
 } as const;
-const awarenessRelationships = {
-  doc: [
-    {
-      sourceField: ["docId"],
-      destField: ["id"],
-      destSchema: "doc",
-      cardinality: "one",
-    },
-  ],
-} as const;
 const docOperationRelationships = {
   doc: [
     {
@@ -203,14 +164,12 @@ const userRelationships = {
 export const schema = {
   tables: {
     account: accountTable,
-    awareness: awarenessTable,
     doc: docTable,
     docOperation: docOperationTable,
     user: userTable,
   },
   relationships: {
     account: accountRelationships,
-    awareness: awarenessRelationships,
     docOperation: docOperationRelationships,
     doc: docRelationships,
     user: userRelationships,
@@ -231,13 +190,6 @@ export type Schema = typeof schema;
  * @deprecated Use Row["account"] instead from "@rocicorp/zero".
  */
 export type Account = Row["account"];
-/**
- * Represents a row from the "awareness" table.
- * This type is auto-generated from your Drizzle schema definition.
- *
- * @deprecated Use Row["awareness"] instead from "@rocicorp/zero".
- */
-export type Awareness = Row["awareness"];
 /**
  * Represents a row from the "doc" table.
  * This type is auto-generated from your Drizzle schema definition.
