@@ -113,7 +113,7 @@ Configure in `apps/web/scripts/simulate-editing.ts`:
 2. Transaction converted to Loro updates
 3. Updates sent to Durable Object via WebSocket
 4. DO broadcasts to other connected clients
-5. Updates batched in memory, flushed to DB every 5 seconds
+5. Updates batched in memory, flushed to DB every 20 seconds
 6. Flushed updates applied to PostgreSQL via Zero mutations
 
 ### Durable Object Design
