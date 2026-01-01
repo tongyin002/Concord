@@ -195,17 +195,21 @@ export function collabCaret(
           const headCursor = getLoroCursorFromPMPosition(selection.$head, loroDoc);
           const existingStatus = store.getLocal();
 
-          if (
-            !isCursorEqual(existingStatus?.anchor, anchorCursor) ||
-            !isCursorEqual(existingStatus?.head, headCursor)
-          ) {
-            store.setLocal(anchorCursor ?? null, headCursor ?? null, user);
+          try {
+            if (
+              !isCursorEqual(existingStatus?.anchor, anchorCursor) ||
+              !isCursorEqual(existingStatus?.head, headCursor)
+            ) {
+              store.setLocal(anchorCursor ?? null, headCursor ?? null, user);
+            }
+          } finally {
+            // Free all cursors to prevent memory leaks
+            // Using try/finally ensures cleanup happens regardless of control flow
+            anchorCursor?.free();
+            headCursor?.free();
+            existingStatus?.anchor?.free();
+            existingStatus?.head?.free();
           }
-          // Free all cursors to prevent memory leaks
-          anchorCursor?.free();
-          headCursor?.free();
-          existingStatus?.anchor?.free();
-          existingStatus?.head?.free();
         }
 
         return decorationSet.map(tr.mapping, tr.doc);

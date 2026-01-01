@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorState } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
 import { keymap } from 'prosemirror-keymap';
@@ -13,11 +13,14 @@ import { decodeBase64, encodeBase64 } from 'lib/sharedUtils';
 
 const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL ?? 'ws://localhost:8787';
 
+type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
+
 const Editor = ({
   loroDoc,
   onUpdate,
   store,
   user,
+  editable,
 }: {
   loroDoc: LoroDoc;
   onUpdate: (update: Uint8Array) => void;
@@ -26,6 +29,7 @@ const Editor = ({
     name: string;
     color: string;
   };
+  editable: boolean;
 }) => {
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorView | null>(null);
@@ -57,6 +61,7 @@ const Editor = ({
         editorView.updateState(newState);
       },
       plugins: [loroSyncAdvanced(loroDoc, pmSchema)],
+      editable: () => editable,
     });
     editorRef.current = editorView;
 
@@ -66,7 +71,7 @@ const Editor = ({
       unsubscribe();
       editorRef.current?.destroy();
     };
-  }, [loroDoc, onUpdate, user, store]);
+  }, [loroDoc, onUpdate, user, store, editable]);
 
   return <div ref={editorContainerRef} className="h-full overflow-y-scroll" />;
 };
@@ -105,21 +110,62 @@ export const EditorContainer = ({
   }, [loroDoc]);
 
   const websocketRef = useRef<WebSocket | null>(null);
-  useEffect(() => {
-    const websocket = new WebSocket(`${WS_BASE_URL}/ws?docId=${doc.id}`);
-    websocketRef.current = websocket;
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
+  const reconnectAttempts = useRef(0);
+  const maxReconnectAttempts = 10;
 
-    websocket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'update') {
-        loroDoc.import(decodeBase64(data.data));
-      } else if (data.type === 'awareness') {
-        presenceStore.current?.apply(decodeBase64(data.data));
-      }
+  useEffect(() => {
+    let isMounted = true;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const connect = () => {
+      if (!isMounted) return;
+
+      const isReconnect = reconnectAttempts.current > 0;
+      setConnectionStatus(isReconnect ? 'reconnecting' : 'connecting');
+
+      const websocket = new WebSocket(`${WS_BASE_URL}/ws?docId=${doc.id}`);
+      websocketRef.current = websocket;
+
+      websocket.onopen = () => {
+        if (!isMounted) return;
+        reconnectAttempts.current = 0;
+        setConnectionStatus('connected');
+      };
+
+      websocket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'update') {
+          loroDoc.import(decodeBase64(data.data));
+        } else if (data.type === 'awareness') {
+          presenceStore.current?.apply(decodeBase64(data.data));
+        }
+      };
+
+      websocket.onclose = () => {
+        if (!isMounted) return;
+        websocketRef.current = null;
+        setConnectionStatus('disconnected');
+
+        // Attempt to reconnect with exponential backoff
+        if (reconnectAttempts.current < maxReconnectAttempts) {
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+          reconnectAttempts.current++;
+          reconnectTimeout = setTimeout(connect, delay);
+        }
+      };
+
+      websocket.onerror = () => {
+        // onclose will be called after onerror, so we just let it handle reconnection
+      };
     };
 
+    connect();
+
     return () => {
-      websocket.close();
+      isMounted = false;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      websocketRef.current?.close();
       websocketRef.current = null;
     };
   }, [doc.id, loroDoc]);
@@ -150,8 +196,35 @@ export const EditorContainer = ({
     [doc.id]
   );
 
+  const isConnected = connectionStatus === 'connected';
+
   return (
-    <Editor loroDoc={loroDoc} onUpdate={onLocalUpdate} store={presenceStore.current} user={user} />
+    <div className="h-full flex flex-col">
+      {/* Connection status banner */}
+      {!isConnected && (
+        <div
+          className={`px-4 py-2 text-sm font-medium text-center ${
+            connectionStatus === 'connecting' || connectionStatus === 'reconnecting'
+              ? 'bg-amber-100 text-amber-800'
+              : 'bg-red-100 text-red-800'
+          }`}
+        >
+          {connectionStatus === 'connecting' && 'Connecting to server...'}
+          {connectionStatus === 'reconnecting' &&
+            `Reconnecting... (attempt ${reconnectAttempts.current}/${maxReconnectAttempts})`}
+          {connectionStatus === 'disconnected' && 'Disconnected. Unable to reconnect.'}
+        </div>
+      )}
+      <div className="flex-1 overflow-hidden">
+        <Editor
+          loroDoc={loroDoc}
+          onUpdate={onLocalUpdate}
+          store={presenceStore.current}
+          user={user}
+          editable={isConnected}
+        />
+      </div>
+    </div>
   );
 };
 
