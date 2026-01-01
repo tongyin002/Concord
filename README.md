@@ -4,6 +4,9 @@
 
 A real-time collaborative document editor built with [ProseMirror](https://prosemirror.net), [Loro CRDT](https://loro.dev), [Zero sync engine](https://rocicorp.dev/zero), and [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/). Supports concurrent multi-user editing with conflict-free synchronization.
 
+https://github.com/user-attachments/assets/2da940c8-d3b6-4acb-bee6-58bb1bc6e7df
+
+
 ## Architecture
 
 ```mermaid
