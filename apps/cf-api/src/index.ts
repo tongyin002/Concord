@@ -53,7 +53,6 @@ app.use('/api/zero/*', async (c, next) => {
   const auth = c.get('auth');
   const session = await auth.api.getSession({ headers: c.req.header() });
   if (!session) {
-    console.log('hey', c.req.raw);
     return c.json({ error: 'Unauthorized' }, 401);
   }
   c.set('userID', session.user.id);
@@ -104,7 +103,6 @@ app.get('/ws', async (c) => {
 // Internal endpoint for DO to flush updates - no auth required
 // This is called by the Durable Object alarm to persist updates to PostgreSQL
 app.post('/api/internal/flush-updates', async (c) => {
-  console.log('flush-updates-internal gets called');
   const { docId, updates } = await c.req.json<{ docId: string; updates: string[] }>();
 
   if (!docId || !updates.length) {
@@ -186,8 +184,6 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
   }
 
   async alarm() {
-    console.log('alarm fired, pending updates:', this.pendingUpdates.length);
-
     if (this.pendingUpdates.length === 0) {
       this.alarmScheduled = false;
       return;
