@@ -100,16 +100,18 @@ app.get('/ws', async (c) => {
   return stub.fetch(c.req.raw);
 });
 
-// Internal endpoint for DO to flush updates - no auth required
-// This is called by the Durable Object alarm to persist updates to PostgreSQL
-app.post('/api/internal/flush-updates', async (c) => {
-  const { docId, updates } = await c.req.json<{ docId: string; updates: string[] }>();
+export default app;
 
-  if (!docId || !updates.length) {
-    return c.json({ error: 'docId and updates array are required' }, 400);
-  }
-
-  const db = c.get('db');
+/**
+ * Flushes pending CRDT updates to the database.
+ * Called directly by the Durable Object alarm handler.
+ */
+export async function flushUpdatesToDatabase(
+  env: CloudflareBindings,
+  docId: string,
+  updates: string[]
+): Promise<void> {
+  const db = createDB(env.HYPERDRIVE);
   const zeroDBProvider = createZeroDBProvider(db);
 
   await zeroDBProvider.transaction(async (tr) => {
@@ -119,15 +121,9 @@ app.post('/api/internal/flush-updates', async (c) => {
       ctx: { userID: 'system' },
     });
   });
-
-  return c.json({ success: true });
-});
-
-export default app;
+}
 
 export class CollaborationDO extends DurableObject<CloudflareBindings> {
-  // Worker URL for internal API calls
-  private readonly workerUrl = 'http://localhost:8787';
   // In-memory buffer for pending updates
   private pendingUpdates: Array<{ type: string; docId: string; data: string }> = [];
   private alarmScheduled = false;
@@ -189,31 +185,26 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
       return;
     }
 
-    const updates = [...this.pendingUpdates];
-    // Clear in-memory buffer after successful flush
-    this.pendingUpdates = [];
-    const theDocId = updates[0].docId;
+    const updatesToFlush = [...this.pendingUpdates];
+    const docId = updatesToFlush[0].docId;
 
-    // Call the internal flush endpoint
-    const response = await fetch(`${this.workerUrl}/api/internal/flush-updates`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        docId: theDocId,
-        updates: updates.map((u) => u.data),
-      }),
-    });
+    try {
+      // Call mutator directly instead of HTTP - no network hop needed
+      await flushUpdatesToDatabase(
+        this.env,
+        docId,
+        updatesToFlush.map((u) => u.data)
+      );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Failed to flush updates:', errorText);
-      // Reschedule alarm to retry later
+      // Only clear buffer after successful flush (fixes data loss bug)
+      this.pendingUpdates = this.pendingUpdates.slice(updatesToFlush.length);
+      this.alarmScheduled = false;
+    } catch (error) {
+      console.error('Failed to flush updates:', error);
+      // Don't clear buffer on failure - reschedule to retry
       this.alarmScheduled = true;
       await this.ctx.storage.setAlarm(Date.now() + 20000);
-      return;
     }
-
-    this.alarmScheduled = false;
   }
 
   webSocketClose?(

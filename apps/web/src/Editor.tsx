@@ -11,6 +11,8 @@ import { PresenceStore } from './presenceStore';
 import { redo, undo, undoRedo } from './undoRedo';
 import { decodeBase64, encodeBase64 } from 'lib/sharedUtils';
 
+const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL ?? 'ws://localhost:8787';
+
 const Editor = ({
   loroDoc,
   onUpdate,
@@ -102,9 +104,9 @@ export const EditorContainer = ({
     return () => loroDoc.free();
   }, [loroDoc]);
 
-  const websocketRef = useRef<WebSocket>(new WebSocket(`http://localhost:8787/ws?docId=${doc.id}`));
+  const websocketRef = useRef<WebSocket | null>(null);
   useEffect(() => {
-    const websocket = new WebSocket(`http://localhost:8787/ws?docId=${doc.id}`);
+    const websocket = new WebSocket(`${WS_BASE_URL}/ws?docId=${doc.id}`);
     websocketRef.current = websocket;
 
     websocket.onmessage = (event) => {
@@ -116,14 +118,20 @@ export const EditorContainer = ({
       }
     };
 
-    return () => websocket.close();
+    return () => {
+      websocket.close();
+      websocketRef.current = null;
+    };
   }, [doc.id, loroDoc]);
 
   const presenceStore = useRef<PresenceStore>(new PresenceStore(loroDoc.peerIdStr));
   useEffect(() => {
     const presence = presenceStore.current;
     const unsubscribe = presence.subscribeLocalUpdates((update) => {
-      websocketRef.current.send(JSON.stringify({ type: 'awareness', data: encodeBase64(update) }));
+      const ws = websocketRef.current;
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'awareness', data: encodeBase64(update) }));
+      }
     });
 
     return () => {
@@ -134,10 +142,10 @@ export const EditorContainer = ({
 
   const onLocalUpdate = useCallback(
     (update: Uint8Array) => {
-      // send over the network
-      websocketRef.current.send(
-        JSON.stringify({ type: 'update', docId: doc.id, data: encodeBase64(update) })
-      );
+      const ws = websocketRef.current;
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'update', docId: doc.id, data: encodeBase64(update) }));
+      }
     },
     [doc.id]
   );

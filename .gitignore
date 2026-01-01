@@ -17,3 +17,4 @@ public/dist
 # Playwright simulation auth state
 .auth-state.json
 .dev.vars
+TODO.md
