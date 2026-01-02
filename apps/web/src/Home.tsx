@@ -5,9 +5,11 @@ import { mutators } from '../../../packages/lib/src/mutators';
 import { Dialog } from '@base-ui/react/dialog';
 import { Avatar } from '@base-ui/react/avatar';
 import { Input } from '@base-ui/react/input';
+import { Button } from '@base-ui/react/button';
 import { useDocIdFromUrl } from './useDocIdFromUrl';
 import { EditorContainer } from './Editor';
 import { DocumentListItem } from './DocumentListItem';
+import EditorPreview from './EditorPreview';
 import { LoroDoc, LoroMap, LoroMovableList, LoroText } from 'loro-crdt';
 
 const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
@@ -22,10 +24,18 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
     setTitle(e.target.value);
   }, []);
   const [selectedDocId, setSelectedDocId] = useDocIdFromUrl();
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
 
-  const handleSelectDoc = useCallback((docId: string) => {
-    setSelectedDocId(docId);
-  }, [setSelectedDocId]);
+  const handleSelectDoc = useCallback(
+    (docId: string) => {
+      setSelectedDocId(docId);
+    },
+    [setSelectedDocId]
+  );
+
+  const handleOpenHistory = useCallback(() => {
+    setHistoryDialogOpen(true);
+  }, []);
 
   const handleDeleteDoc = useCallback(
     (docId: string) => {
@@ -220,8 +230,22 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
       <main className="flex-1 h-full overflow-hidden bg-white">
         {selectedDoc ? (
           <div className="h-full flex flex-col">
-            <header className="h-[72px] shrink-0 px-6 border-b border-slate-200 bg-white flex items-center">
+            <header className="h-[72px] shrink-0 px-6 border-b border-slate-200 bg-white flex items-center justify-between">
               <h1 className="text-lg font-semibold text-slate-900">{selectedDoc.title}</h1>
+              <Button
+                onClick={handleOpenHistory}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                History
+              </Button>
             </header>
             <EditorContainer doc={selectedDoc} user={editorUser} />
           </div>
@@ -251,6 +275,14 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
           </div>
         )}
       </main>
+
+      {selectedDoc && (
+        <EditorPreview
+          docId={selectedDoc.id}
+          open={historyDialogOpen}
+          onOpenChange={setHistoryDialogOpen}
+        />
+      )}
     </div>
   );
 };

@@ -31,42 +31,14 @@ graph TB
 
 - **Real-time Collaboration**: Multiple users editing the same document simultaneously
 - **CRDT Sync**: Conflict-free updates using Loro CRDT
+- **Time Travel** Full edit history rewind like a video playback
 - **Authentication**: GitHub OAuth via Better Auth
 - **Persistence**: Document updates saved to PostgreSQL
 - **WebSocket Relay**: Durable Objects coordinate real-time updates across clients
 
-## Project Structure
-
-```
-apps/
-├── web/                 # React frontend (Vite)
-│   ├── src/
-│   │   ├── Editor.tsx           # ProseMirror editor component
-│   │   ├── Home.tsx             # Document list & sidebar
-│   │   └── loroToPm.ts          # CRDT ↔ ProseMirror conversion
-│   └── scripts/
-│       └── simulate-editing.ts  # Multiplayer testing script
-└── cf-api/              # Cloudflare Worker backend (Hono)
-    └── src/
-        └── index.ts             # API routes & Durable Object
-        
-packages/lib/src/
-├── zero.ts              # Zero framework setup
-├── schema.ts            # Database schema
-├── queries.ts           # Zero queries
-├── mutators.ts          # Zero mutations
-└── auth-cf.ts           # Better Auth config
 ```
 
 ## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- pnpm
-- Cloudflare Workers account
-- PostgreSQL database
-- GitHub OAuth app (for authentication)
 
 ### Environment Setup
 
@@ -78,7 +50,7 @@ GITHUB_CLIENT_SECRET=your_github_client_secret
 BETTER_AUTH_URL=http://localhost:8787
 ```
 
-2. Create `.env` in the root with database credentials
+2. Update `.env` in the root 
 
 3. Update `apps/cf-api/wrangler.jsonc` with your Hyperdrive and Durable Object configs
 
@@ -98,10 +70,10 @@ pnpm dev
 
 ```bash
 # First time: authenticate
-pnpm -F web simulate:auth
+pnpm -f web simulate:auth
 
 # Then run simulation with 4 concurrent clients
-pnpm -F web simulate
+pnpm -f web simulate
 ```
 
 Configure in `apps/web/scripts/simulate-editing.ts`:
@@ -123,7 +95,7 @@ Configure in `apps/web/scripts/simulate-editing.ts`:
 ### Durable Object Design
 
 - **In-memory buffering**: Updates held in `pendingUpdates` array to reduce storage writes
-- **Periodic flushing**: Alarm fires every 5 seconds to persist to database
+- **Periodic flushing**: Alarm fires every 20 seconds to persist to database
 - **Client synchronization**: New clients receive all pending updates on connection
 
 ## License
