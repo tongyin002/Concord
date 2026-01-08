@@ -8,7 +8,7 @@ import { Input } from "@base-ui/react/input";
 import { useDocIdFromUrl } from "./useDocIdFromUrl";
 import { Editor } from "./Editor";
 import { DocumentListItem } from "./DocumentListItem";
-import { LoroDoc, LoroMap, LoroMovableList, LoroText } from "loro-crdt";
+import { LoroDoc, LoroMap, LoroMovableList, LoroText } from "lib/loro";
 
 const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
   const zero = useZero();

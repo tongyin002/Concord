@@ -5,10 +5,9 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy --minify",
-    "cf-typegen": "wrangler types --env-file ./../../.env --env-interface CloudflareBindings"
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
   },
   "dependencies": {
-    "drizzle-orm": "^0.45.1",
     "hono": "^4.9.5",
     "lib": "workspace:*"
   },

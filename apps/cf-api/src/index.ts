@@ -1,9 +1,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { eq } from "drizzle-orm";
 import { createAuth } from "lib/auth-cf";
 import { createDB, createZeroDBProvider } from "lib/db-cf";
-import { doc } from "lib/schema";
+import { doc, eq } from "lib/schema";
 import {
   handleMutateRequest,
   handleQueryRequest,

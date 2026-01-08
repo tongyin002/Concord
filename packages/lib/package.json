@@ -7,6 +7,7 @@
     "./auth-cf": "./src/auth-cf.ts",
     "./auth-client": "./src/auth-client.ts",
     "./db-cf": "./src/db-cf.ts",
+    "./loro": "./src/loro.ts",
     "./schema": "./src/schema.ts",
     "./zero": "./src/zero.ts",
     "./zero-client": "./src/zero-client.ts",
@@ -21,7 +22,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.15.0",
   "dependencies": {
     "@rocicorp/zero": "^0.25.7",
     "better-auth": "^1.4.9",
