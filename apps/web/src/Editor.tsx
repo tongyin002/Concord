@@ -11,8 +11,6 @@ import { PresenceStore } from './presenceStore';
 import { redo, undo, undoRedo } from './undoRedo';
 import { decodeBase64, encodeBase64 } from 'lib/sharedUtils';
 
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL ?? 'ws://localhost:8787';
-
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting';
 
 const Editor = ({
@@ -124,7 +122,7 @@ export const EditorContainer = ({
       const isReconnect = reconnectAttempts.current > 0;
       setConnectionStatus(isReconnect ? 'reconnecting' : 'connecting');
 
-      const websocket = new WebSocket(`${WS_BASE_URL}/ws?docId=${doc.id}`);
+      const websocket = new WebSocket(`${import.meta.env.VITE_WS_URL ?? 'ws://localhost:8787'}/ws?docId=${doc.id}`);
       websocketRef.current = websocket;
 
       websocket.onopen = () => {

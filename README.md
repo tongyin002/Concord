@@ -42,17 +42,43 @@ graph TB
 
 ### Environment Setup
 
-1. Create `.dev.vars` in `apps/cf-api/`:
+#### 1. Root `.env` file (client-side config)
 
+Create a `.env` file in the project root with these variables:
+
+```bash
+# Frontend URLs (all VITE_* vars are exposed to the web app)
+VITE_API_URL=http://localhost:8787      # Backend API
+VITE_WEB_URL=http://localhost:5173      # Frontend app
+VITE_ZERO_URL=http://localhost:4848     # Zero sync server
+VITE_WS_URL=ws://localhost:8787         # WebSocket endpoint
 ```
+
+For production, update these to your deployed URLs.
+
+#### 2. Worker secrets (`apps/cf-api/.dev.vars`)
+
+Create `.dev.vars` in `apps/cf-api/` for local development:
+
+```bash
+# GitHub OAuth (create app at https://github.com/settings/developers)
 GITHUB_CLIENT_ID=your_github_client_id
 GITHUB_CLIENT_SECRET=your_github_client_secret
+
+# Better Auth
 BETTER_AUTH_URL=http://localhost:8787
+BETTER_AUTH_SECRET=generate-a-random-secret
+
+# CORS configuration (comma-separated origins)
+CORS_ORIGINS=http://localhost:5173,http://localhost:4848,http://localhost:8787
+TRUSTED_ORIGINS=http://localhost:5173,http://localhost:8787,http://localhost:4848
 ```
 
-2. Update `.env` in the root 
+For production, set these as Cloudflare Worker secrets.
 
-3. Update `apps/cf-api/wrangler.jsonc` with your Hyperdrive and Durable Object configs
+#### 3. Wrangler config
+
+Update `apps/cf-api/wrangler.jsonc` with your Hyperdrive and Durable Object configs
 
 ### Installation & Run
 

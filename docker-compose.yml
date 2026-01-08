@@ -1,6 +1,6 @@
 services:
   piuq_postgres:
-    image: postgres:17.6-alpine3.22
+    image: postgres:18.1-alpine3.23
     shm_size: 1g
     user: postgres
     restart: always

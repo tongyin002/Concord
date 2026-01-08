@@ -19,19 +19,40 @@ type Variables = ZeroContext & {
   auth: ReturnType<typeof createAuth>;
 };
 
-const app = new Hono<{ Bindings: CloudflareBindings; Variables: Variables }>();
+const app = new Hono<{ Bindings: ExtendedBindings; Variables: Variables }>();
+
+/** Extended bindings with optional CORS configuration */
+interface ExtendedBindings extends CloudflareBindings {
+  /** Comma-separated list of allowed CORS origins */
+  CORS_ORIGINS?: string;
+}
+
+/**
+ * Parse CORS origins from environment variable.
+ * Expects comma-separated URLs: "http://localhost:5173,http://localhost:8787"
+ * Falls back to common development origins if not set.
+ */
+function getCorsOrigins(env: ExtendedBindings): string[] {
+  const originsEnv = env.CORS_ORIGINS;
+  if (originsEnv) {
+    return originsEnv.split(',').map((o: string) => o.trim());
+  }
+  // Default development origins
+  return ['http://localhost:5173', 'http://localhost:4848', 'http://localhost:8787'];
+}
 
 // CORS middleware
-app.use(
-  '/api/*',
-  cors({
-    origin: ['http://localhost:5173', 'http://localhost:4848', 'http://localhost:8787'],
+app.use('/api/*', async (c, next) => {
+  const origins = getCorsOrigins(c.env);
+  const corsMiddleware = cors({
+    origin: origins,
     allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     maxAge: 600,
     credentials: true,
-  })
-);
+  });
+  return corsMiddleware(c, next);
+});
 
 // Initialize DB and Auth per-request
 app.use('*', async (c, next) => {

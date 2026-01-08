@@ -6,9 +6,21 @@ import { mutators } from './mutators';
 export { Zero } from '@rocicorp/zero';
 export * from '@rocicorp/zero/react';
 
-export const zeroBaseOptions: ZeroOptions<Schema, undefined, ZeroContext> = {
-  userID: 'anon',
-  server: 'http://localhost:4848',
-  schema,
-  mutators,
-};
+/**
+ * Creates Zero options with the specified server URL.
+ * @param serverUrl - The Zero sync server URL (e.g., http://localhost:4848)
+ */
+export function createZeroOptions(serverUrl: string): ZeroOptions<Schema, undefined, ZeroContext> {
+  return {
+    userID: 'anon',
+    server: serverUrl,
+    schema,
+    mutators,
+  };
+}
+
+/**
+ * Default Zero options for development.
+ * In production, use createZeroOptions() with your actual server URL.
+ */
+export const zeroBaseOptions: ZeroOptions<Schema, undefined, ZeroContext> = createZeroOptions('http://localhost:4848');

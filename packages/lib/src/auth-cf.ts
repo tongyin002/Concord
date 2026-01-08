@@ -7,6 +7,26 @@ interface AuthEnv {
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
   BETTER_AUTH_URL: string;
+  /** Comma-separated list of trusted origins for CORS */
+  TRUSTED_ORIGINS?: string;
+}
+
+/**
+ * Parse trusted origins from environment variable.
+ * Expects comma-separated URLs: "http://localhost:5173,http://localhost:8787"
+ * Falls back to common development origins if not set.
+ */
+function getTrustedOrigins(env: AuthEnv): string[] {
+  if (env.TRUSTED_ORIGINS) {
+    return env.TRUSTED_ORIGINS.split(',').map((o) => o.trim());
+  }
+  // Default development origins
+  return [
+    'http://localhost:5173',
+    'http://localhost:8787',
+    'http://localhost:4848',
+    'http://localhost:3000',
+  ];
 }
 
 /**
@@ -16,12 +36,7 @@ interface AuthEnv {
 export function createAuth(db: DrizzleDB, env: AuthEnv) {
   return betterAuth({
     baseURL: env.BETTER_AUTH_URL,
-    trustedOrigins: [
-      'http://localhost:5173',
-      'http://localhost:8787',
-      'https://localhost:4848',
-      'https://localhost:3000',
-    ],
+    trustedOrigins: getTrustedOrigins(env),
     database: drizzleAdapter(db, {
       provider: 'pg',
       schema,

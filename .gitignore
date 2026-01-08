@@ -6,6 +6,7 @@ dist
 dist-ssr
 *.local
 .env.keys
+.env
 .cache
 server/dist
 public/dist
