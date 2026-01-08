@@ -1,16 +1,14 @@
-import { useCallback, useMemo, useState } from 'react';
-import { useQuery, useZero } from 'lib/zero-client';
-import { queries } from '../../../packages/lib/src/queries';
-import { mutators } from '../../../packages/lib/src/mutators';
-import { Dialog } from '@base-ui/react/dialog';
-import { Avatar } from '@base-ui/react/avatar';
-import { Input } from '@base-ui/react/input';
-import { Button } from '@base-ui/react/button';
-import { useDocIdFromUrl } from './useDocIdFromUrl';
-import { EditorContainer } from './Editor';
-import { DocumentListItem } from './DocumentListItem';
-import EditorPreview from './EditorPreview';
-import { LoroDoc, LoroMap, LoroMovableList, LoroText } from 'loro-crdt';
+import { useCallback, useMemo, useState } from "react";
+import { useQuery, useZero } from "lib/zero-client";
+import { queries } from "../../../packages/lib/src/queries";
+import { mutators } from "../../../packages/lib/src/mutators";
+import { Dialog } from "@base-ui/react/dialog";
+import { Avatar } from "@base-ui/react/avatar";
+import { Input } from "@base-ui/react/input";
+import { useDocIdFromUrl } from "./useDocIdFromUrl";
+import { EditorContainer } from "./Editor";
+import { DocumentListItem } from "./DocumentListItem";
+import { LoroDoc, LoroMap, LoroMovableList, LoroText } from "loro-crdt";
 
 const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
   const zero = useZero();
@@ -19,12 +17,14 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
 
   const me = useMemo(() => user?.[0] ?? null, [user]);
 
-  const [title, setTitle] = useState('');
-  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setTitle(e.target.value);
-  }, []);
+  const [title, setTitle] = useState("");
+  const handleTitleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setTitle(e.target.value);
+    },
+    []
+  );
   const [selectedDocId, setSelectedDocId] = useDocIdFromUrl();
-  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
 
   const handleSelectDoc = useCallback(
     (docId: string) => {
@@ -32,10 +32,6 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
     },
     [setSelectedDocId]
   );
-
-  const handleOpenHistory = useCallback(() => {
-    setHistoryDialogOpen(true);
-  }, []);
 
   const handleDeleteDoc = useCallback(
     (docId: string) => {
@@ -46,13 +42,13 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
 
   const onCreate = useCallback(() => {
     const loroDoc = new LoroDoc();
-    const docRoot = loroDoc.getMap('docRoot');
-    docRoot.set('type', 'doc');
-    const docContent = docRoot.setContainer('content', new LoroMovableList());
+    const docRoot = loroDoc.getMap("docRoot");
+    docRoot.set("type", "doc");
+    const docContent = docRoot.setContainer("content", new LoroMovableList());
     const paragraph = docContent.pushContainer(new LoroMap());
-    paragraph.set('type', 'paragraph');
-    paragraph.setContainer('content', new LoroText());
-    const snapshot = loroDoc.export({ mode: 'snapshot' });
+    paragraph.set("type", "paragraph");
+    paragraph.setContainer("content", new LoroText());
+    const snapshot = loroDoc.export({ mode: "snapshot" });
 
     zero.mutate(
       mutators.doc.create({
@@ -65,7 +61,7 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
 
   const editorUser = useMemo(
     () => ({
-      name: me?.name ?? 'test_user',
+      name: me?.name ?? "test_user",
       color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
     }),
     [me]
@@ -81,7 +77,12 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
           </svg>
           New Document
         </Dialog.Trigger>
@@ -132,23 +133,27 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
           <div className="flex items-center gap-3">
             <Avatar.Root className="inline-flex size-10 items-center justify-center overflow-hidden rounded-full bg-linear-to-br from-teal-400 to-cyan-500 ring-2 ring-white shadow-md">
               <Avatar.Image
-                src={me?.image ?? ''}
+                src={me?.image ?? ""}
                 width="40"
                 height="40"
                 className="size-full object-cover"
               />
               <Avatar.Fallback className="flex size-full items-center justify-center text-sm font-semibold text-white">
-                {me?.name?.charAt(0)?.toUpperCase() ?? 'U'}
+                {me?.name?.charAt(0)?.toUpperCase() ?? "U"}
               </Avatar.Fallback>
             </Avatar.Root>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-slate-800 truncate">
-                {me?.name ?? 'Guest User'}
+                {me?.name ?? "Guest User"}
               </p>
               <p className="text-xs text-slate-400 truncate">
                 {me?.email
-                  ? `${me.email[0]}${'*'.repeat(me.email.indexOf('@') - 1)}@${'*'.repeat(me.email.length - me.email.indexOf('@') - 2)}${me.email[me.email.length - 1]}`
-                  : 'Not signed in'}
+                  ? `${me.email[0]}${"*".repeat(
+                      me.email.indexOf("@") - 1
+                    )}@${"*".repeat(
+                      me.email.length - me.email.indexOf("@") - 2
+                    )}${me.email[me.email.length - 1]}`
+                  : "Not signed in"}
               </p>
             </div>
           </div>
@@ -192,7 +197,9 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
                     </svg>
                   </div>
                   <p className="text-sm text-slate-500">No documents yet</p>
-                  <p className="text-xs text-slate-400 mt-1">Create your first document</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Create your first document
+                  </p>
                 </div>
               )}
             </nav>
@@ -230,22 +237,10 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
       <main className="flex-1 h-full overflow-hidden bg-white">
         {selectedDoc ? (
           <div className="h-full flex flex-col">
-            <header className="h-[72px] shrink-0 px-6 border-b border-slate-200 bg-white flex items-center justify-between">
-              <h1 className="text-lg font-semibold text-slate-900">{selectedDoc.title}</h1>
-              <Button
-                onClick={handleOpenHistory}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                History
-              </Button>
+            <header className="h-[72px] shrink-0 px-6 border-b border-slate-200 bg-white flex items-center">
+              <h1 className="text-lg font-semibold text-slate-900">
+                {selectedDoc.title}
+              </h1>
             </header>
             <EditorContainer doc={selectedDoc} user={editorUser} />
           </div>
@@ -267,22 +262,17 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
                   />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">Select a document</h2>
+              <h2 className="text-xl font-semibold text-slate-800 mb-2">
+                Select a document
+              </h2>
               <p className="text-sm text-slate-500">
-                Choose a document from the sidebar to start editing, or create a new one.
+                Choose a document from the sidebar to start editing, or create a
+                new one.
               </p>
             </div>
           </div>
         )}
       </main>
-
-      {selectedDoc && (
-        <EditorPreview
-          docId={selectedDoc.id}
-          open={historyDialogOpen}
-          onOpenChange={setHistoryDialogOpen}
-        />
-      )}
     </div>
   );
 };

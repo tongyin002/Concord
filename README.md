@@ -31,7 +31,6 @@ graph TB
 
 - **Real-time Collaboration**: Multiple users editing the same document simultaneously
 - **CRDT Sync**: Conflict-free updates using Loro CRDT
-- **Time Travel** Full edit history rewind like a video playback
 - **Authentication**: GitHub OAuth via Better Auth
 - **Persistence**: Document updates saved to PostgreSQL
 - **WebSocket Relay**: Durable Objects coordinate real-time updates across clients
