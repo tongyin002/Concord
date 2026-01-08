@@ -7,6 +7,7 @@
     "./auth-cf": "./src/auth-cf.ts",
     "./auth-client": "./src/auth-client.ts",
     "./db-cf": "./src/db-cf.ts",
+    "./schema": "./src/schema.ts",
     "./zero": "./src/zero.ts",
     "./zero-client": "./src/zero-client.ts",
     "./sharedUtils": "./src/sharedUtils.ts"
