@@ -6,16 +6,14 @@ import { Dialog } from "@base-ui/react/dialog";
 import { Avatar } from "@base-ui/react/avatar";
 import { Input } from "@base-ui/react/input";
 import { useDocIdFromUrl } from "./useDocIdFromUrl";
-import { EditorContainer } from "./Editor";
+import { Editor } from "./Editor";
 import { DocumentListItem } from "./DocumentListItem";
 import { LoroDoc, LoroMap, LoroMovableList, LoroText } from "loro-crdt";
 
 const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
   const zero = useZero();
   const [docs] = useQuery(queries.doc.all());
-  const [user] = useQuery(queries.user.me());
-
-  const me = useMemo(() => user?.[0] ?? null, [user]);
+  const [me] = useQuery(queries.user.me());
 
   const [title, setTitle] = useState("");
   const handleTitleChange = useCallback(
@@ -242,7 +240,9 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
                 {selectedDoc.title}
               </h1>
             </header>
-            <EditorContainer doc={selectedDoc} user={editorUser} />
+            <div className="flex-1 overflow-hidden">
+              <Editor docId={selectedDoc.id} user={editorUser} />
+            </div>
           </div>
         ) : (
           <div className="h-full flex items-center justify-center bg-slate-50/30">

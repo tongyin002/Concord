@@ -1,22 +1,26 @@
-import { useCallback, useMemo } from 'react';
-import { Button } from '@base-ui/react';
-import HomePage from './Home';
-import { createAuth } from 'lib/auth-client';
-import { Zero, createZeroOptions, ZeroProvider } from 'lib/zero-client';
+import { useCallback, useMemo } from "react";
+import { Button } from "@base-ui/react";
+import HomePage from "./Home";
+import { createAuth } from "lib/auth-client";
+import { Zero, createZeroOptions, ZeroProvider } from "lib/zero-client";
 
 // Create auth client with API URL from env
-const authClient = createAuth(import.meta.env.VITE_API_URL ?? 'http://localhost:8787');
+const authClient = createAuth(
+  import.meta.env.VITE_API_URL ?? "http://localhost:8787"
+);
 
 // Create Zero options with server URL from env
-const zeroOptions = createZeroOptions(import.meta.env.VITE_ZERO_URL ?? 'http://localhost:4848');
+const zeroOptions = createZeroOptions(
+  import.meta.env.VITE_ZERO_URL ?? "http://localhost:4848"
+);
 
 const App = () => {
   const { data, isPending, error } = authClient.useSession();
 
   const zero = useMemo(() => {
-    if (!data) return null;
+    const userID = data?.session.userId;
+    if (!userID) return null;
 
-    const userID = data.session.userId;
     return new Zero({
       ...zeroOptions,
       userID,
@@ -24,12 +28,12 @@ const App = () => {
         userID,
       },
     });
-  }, [data]);
+  }, [data?.session.userId]);
 
   const onSignIn = useCallback(() => {
     authClient.signIn.social({
-      provider: 'github',
-      callbackURL: import.meta.env.VITE_WEB_URL ?? 'http://localhost:5173',
+      provider: "github",
+      callbackURL: import.meta.env.VITE_WEB_URL ?? "http://localhost:5173",
     });
   }, []);
 
