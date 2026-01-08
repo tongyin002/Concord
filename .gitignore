@@ -19,3 +19,4 @@ public/dist
 .auth-state.json
 .dev.vars
 TODO.md
+zero.db*
