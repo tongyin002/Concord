@@ -28,9 +28,9 @@ pnpm deploy
 
 ## Endpoints
 
-| Route | Description |
-|-------|-------------|
-| `/api/auth/*` | Better Auth (GitHub OAuth) |
-| `/api/zero/get-queries` | Zero queries |
-| `/api/zero/push` | Zero mutations |
-| `/ws?docId=...` | WebSocket (Durable Object) |
+| Route                   | Description                |
+| ----------------------- | -------------------------- |
+| `/api/auth/*`           | Better Auth (GitHub OAuth) |
+| `/api/zero/get-queries` | Zero queries               |
+| `/api/zero/push`        | Zero mutations             |
+| `/ws?docId=...`         | WebSocket (Durable Object) |

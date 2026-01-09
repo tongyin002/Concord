@@ -10,13 +10,20 @@
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": ["dist/**"]
     },
-    "lint": {},
     "dev": {
       "cache": false,
       "persistent": true,
       "env": ["BETTER_AUTH_*", "GITHUB_CLIENT_*", "ZERO_*", "CLOUDFLARE_*", "VITE_*"]
     },
-    "format": {},
-    "format:check": {}
+    "//#quality": {
+      "dependsOn": ["//#lint", "//#format"]
+    },
+    "//#quality:fix": {
+      "dependsOn": ["//#lint:fix", "//#format:fix"]
+    },
+    "//#lint": {},
+    "//#lint:fix": {},
+    "//#format": {},
+    "//#format:fix": {}
   }
 }

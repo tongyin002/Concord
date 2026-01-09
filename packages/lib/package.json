@@ -2,6 +2,9 @@
   "name": "lib",
   "version": "1.0.0",
   "description": "",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
   "type": "module",
   "exports": {
     "./client": "./src/client/index.ts",
@@ -14,16 +17,13 @@
     "generate": "drizzle-zero generate --format --output ./src/shared/zero-schema.gen.ts",
     "postinstall": "pnpm run generate"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@rocicorp/zero": "^0.25.7",
     "better-auth": "^1.4.9",
     "drizzle-orm": "^0.45.1",
+    "loro-crdt": "^1.10.3",
     "pg": "^8.16.3",
-    "zod": "^4.2.1",
-    "loro-crdt": "^1.10.3"
+    "zod": "^4.2.1"
   },
   "devDependencies": {
     "@types/pg": "^8.16.0",

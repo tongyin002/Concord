@@ -2,10 +2,10 @@
 
 /* Prosemirror editor styles */
 .ProseMirror {
-    height: 100%;
-    padding: 24px;
+  height: 100%;
+  padding: 24px;
 }
 
 .ProseMirror-focused {
-    outline: none;
+  outline: none;
 }

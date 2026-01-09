@@ -1,22 +1,15 @@
 // Shared exports - safe to use on both client and server
 
 // Schema and Zero types
-export {
-  schema,
-  zql,
-  type Schema,
-  type Account,
-  type Doc,
-  type User,
-} from "./zero-schema.gen";
-export * from "./schema";
+export { schema, zql, type Schema, type Account, type Doc, type User } from './zero-schema.gen';
+export * from './schema';
 
 // Queries and mutators
-export { queries, type ZeroContext } from "./queries";
-export { mutators } from "./mutators";
+export { queries, type ZeroContext } from './queries';
+export { mutators } from './mutators';
 
 // Utilities
-export { decodeBase64, encodeBase64 } from "./utils";
+export { decodeBase64, encodeBase64 } from './utils';
 
 // Loro CRDT re-exports
 export {
@@ -32,4 +25,4 @@ export {
   isContainerId,
   type Container,
   type ContainerID,
-} from "loro-crdt";
+} from 'loro-crdt';

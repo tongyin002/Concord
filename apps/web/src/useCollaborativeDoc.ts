@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useCallback } from "react";
-import { LoroDoc, decodeBase64, encodeBase64, queries } from "lib/shared";
-import { useQuery } from "lib/client";
-import { PresenceStore } from "./presenceStore";
+import { useEffect, useMemo, useRef, useCallback } from 'react';
+import { LoroDoc, decodeBase64, encodeBase64, queries } from 'lib/shared';
+import { useQuery } from 'lib/client';
+import { PresenceStore } from './presenceStore';
 
 interface UseCollaborativeDocOptions {
   docId: string;
@@ -15,7 +15,7 @@ interface UseCollaborativeDocOptions {
  *   NEEDS_CATCHUP --(Zero import)--> REALTIME_SYNCED
  *   REALTIME_SYNCED --(WS reconnect)--> NEEDS_CATCHUP
  */
-type SyncSource = "needs_catchup" | "realtime_synced";
+type SyncSource = 'needs_catchup' | 'realtime_synced';
 
 /**
  * Manages a collaborative document with real-time sync via WebSocket
@@ -45,9 +45,9 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
 
     const newDoc = new LoroDoc();
     newDoc.configTextStyle({
-      bold: { expand: "none" },
-      italic: { expand: "none" },
-      underline: { expand: "none" },
+      bold: { expand: 'none' },
+      italic: { expand: 'none' },
+      underline: { expand: 'none' },
     });
     newDoc.setRecordTimestamp(true);
     newDoc.import(decodeBase64(content));
@@ -59,7 +59,7 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
   const presenceStore = useMemo(() => {
     if (!loroDoc) return null;
     return new PresenceStore(loroDoc.peerIdStr);
-  }, [loroDoc?.peerIdStr]);
+  }, [loroDoc]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Sync State
@@ -70,7 +70,7 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
   // Tracks whether we need to catch up from Zero's persisted state.
   // - "needs_catchup": Initial load or WS reconnected (might have missed updates)
   // - "realtime_synced": WS is delivering updates (Zero would be redundant)
-  const syncSourceRef = useRef<SyncSource>("needs_catchup");
+  const syncSourceRef = useRef<SyncSource>('needs_catchup');
 
   // Tracks the last Zero content we processed to avoid re-processing on re-renders.
   const lastZeroContentRef = useRef<string | null>(content);
@@ -92,9 +92,7 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
       if (!isMounted) return;
 
       const ws = new WebSocket(
-        `${
-          import.meta.env.VITE_WS_URL ?? "ws://localhost:8787"
-        }/ws?docId=${docId}`
+        `${import.meta.env.VITE_WS_URL ?? 'ws://localhost:8787'}/ws?docId=${docId}`
       );
       wsRef.current = ws;
 
@@ -104,7 +102,7 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
 
         if (hasConnectedOnce) {
           // Reconnection: we might have missed updates while disconnected
-          syncSourceRef.current = "needs_catchup";
+          syncSourceRef.current = 'needs_catchup';
         }
         hasConnectedOnce = true;
       };
@@ -112,15 +110,15 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          if (msg.type === "update") {
+          if (msg.type === 'update') {
             loroDoc.import(decodeBase64(msg.data));
             // WebSocket is delivering real-time updates
-            syncSourceRef.current = "realtime_synced";
-          } else if (msg.type === "awareness") {
+            syncSourceRef.current = 'realtime_synced';
+          } else if (msg.type === 'awareness') {
             presenceStore.apply(decodeBase64(msg.data));
           }
         } catch (e) {
-          console.error("WebSocket message parse error:", e);
+          console.error('WebSocket message parse error:', e);
         }
       };
 
@@ -162,11 +160,11 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
     lastZeroContentRef.current = content;
 
     // Skip if we're receiving real-time updates via WebSocket
-    if (syncSourceRef.current === "realtime_synced") return;
+    if (syncSourceRef.current === 'realtime_synced') return;
 
     // Import from Zero to catch up on potentially missed updates
     loroDoc.import(decodeBase64(content));
-    syncSourceRef.current = "realtime_synced";
+    syncSourceRef.current = 'realtime_synced';
   }, [content, loroDoc]);
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -179,9 +177,7 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
     const unsubscribe = presenceStore.subscribeLocalUpdates((update) => {
       const ws = wsRef.current;
       if (ws?.readyState === WebSocket.OPEN) {
-        ws.send(
-          JSON.stringify({ type: "awareness", data: encodeBase64(update) })
-        );
+        ws.send(JSON.stringify({ type: 'awareness', data: encodeBase64(update) }));
       }
     });
 
@@ -201,7 +197,7 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
       if (ws?.readyState === WebSocket.OPEN) {
         ws.send(
           JSON.stringify({
-            type: "update",
+            type: 'update',
             docId,
             data: encodeBase64(update),
           })

@@ -1,13 +1,13 @@
-import { useEffect, useRef, memo } from "react";
-import { EditorState } from "prosemirror-state";
-import { EditorView } from "prosemirror-view";
-import { keymap } from "prosemirror-keymap";
-import { baseKeymap, toggleMark } from "prosemirror-commands";
-import { loroDocToPMDoc, pmSchema } from "./loroToPm";
-import { loroSyncAdvanced, updateLoroDocGivenTransaction } from "./loroSync";
-import { collabCaret } from "./collabCaret";
-import { redo, undo, undoRedo } from "./undoRedo";
-import { useCollaborativeDoc } from "./useCollaborativeDoc";
+import { useEffect, useRef, memo } from 'react';
+import { EditorState } from 'prosemirror-state';
+import { EditorView } from 'prosemirror-view';
+import { keymap } from 'prosemirror-keymap';
+import { baseKeymap, toggleMark } from 'prosemirror-commands';
+import { loroDocToPMDoc, pmSchema } from './loroToPm';
+import { loroSyncAdvanced, updateLoroDocGivenTransaction } from './loroSync';
+import { collabCaret } from './collabCaret';
+import { redo, undo, undoRedo } from './undoRedo';
+import { useCollaborativeDoc } from './useCollaborativeDoc';
 
 export interface User {
   name: string;
@@ -56,11 +56,11 @@ export const Editor = ({ docId, user, editable = true }: EditorProps) => {
       plugins: [
         keymap(baseKeymap),
         keymap({
-          "Mod-b": toggleMark(pmSchema.marks.bold),
-          "Mod-i": toggleMark(pmSchema.marks.italic),
-          "Mod-u": toggleMark(pmSchema.marks.underline),
-          "Mod-z": undo,
-          "Mod-Shift-z": redo,
+          'Mod-b': toggleMark(pmSchema.marks.bold),
+          'Mod-i': toggleMark(pmSchema.marks.italic),
+          'Mod-u': toggleMark(pmSchema.marks.underline),
+          'Mod-z': undo,
+          'Mod-Shift-z': redo,
         }),
         collabCaret(loroDoc, presenceStore, userRef.current),
         undoRedo(loroDoc),
@@ -72,11 +72,7 @@ export const Editor = ({ docId, user, editable = true }: EditorProps) => {
       state,
       editable: () => editable,
       dispatchTransaction(tr) {
-        const updatedTr = updateLoroDocGivenTransaction(
-          tr,
-          loroDoc,
-          view.state
-        );
+        const updatedTr = updateLoroDocGivenTransaction(tr, loroDoc, view.state);
         view.updateState(view.state.apply(updatedTr));
       },
     });
@@ -89,14 +85,10 @@ export const Editor = ({ docId, user, editable = true }: EditorProps) => {
       view.destroy();
       viewRef.current = null;
     };
-  }, [loroDoc, presenceStore, sendUpdate]);
+  }, [loroDoc, presenceStore, sendUpdate, editable]);
 
   if (!loroDoc) {
-    return (
-      <div className="h-full flex items-center justify-center text-slate-400">
-        Loading...
-      </div>
-    );
+    return <div className="h-full flex items-center justify-center text-slate-400">Loading...</div>;
   }
 
   return <div ref={containerRef} className="h-full overflow-y-scroll" />;

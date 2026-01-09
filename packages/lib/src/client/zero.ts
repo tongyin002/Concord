@@ -20,4 +20,5 @@ export function createZeroOptions(serverUrl: string): ZeroOptions<Schema, undefi
  * Default Zero options for development.
  * In production, use createZeroOptions() with your actual server URL.
  */
-export const zeroBaseOptions: ZeroOptions<Schema, undefined, ZeroContext> = createZeroOptions('http://localhost:4848');
+export const zeroBaseOptions: ZeroOptions<Schema, undefined, ZeroContext> =
+  createZeroOptions('http://localhost:4848');

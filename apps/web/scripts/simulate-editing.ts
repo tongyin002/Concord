@@ -11,14 +11,14 @@
  * Or run with: npx tsx scripts/simulate-editing.ts
  */
 
-import { chromium, Page, BrowserContext } from "playwright";
-import * as path from "path";
-import * as fs from "fs";
+import { chromium, Page, BrowserContext } from 'playwright';
+import * as path from 'path';
+import * as fs from 'fs';
 
 // ============ CONFIGURATION ============
 const CONFIG = {
   // Your app URL - reads from VITE_WEB_URL env var, or defaults to localhost
-  baseUrl: process.env.VITE_WEB_URL ?? "http://localhost:5173",
+  baseUrl: process.env.VITE_WEB_URL ?? 'http://localhost:5173',
 
   // Document ID to edit (will be appended as ?doc=<id>)
   // Set to null to use whatever doc is shown on the page
@@ -45,13 +45,7 @@ const CONFIG = {
   },
 
   // Path to store auth session
-  authStatePath: path.join(
-    process.cwd(),
-    "apps",
-    "web",
-    "scripts",
-    ".auth-state.json"
-  ),
+  authStatePath: path.join(process.cwd(), 'apps', 'web', 'scripts', '.auth-state.json'),
 
   // Browser window layout
   windowWidth: 800,
@@ -60,21 +54,21 @@ const CONFIG = {
 
 // Sample text snippets for typing
 const TEXT_SNIPPETS = [
-  "The quick brown fox jumps over the lazy dog. ",
-  "Collaborative editing in real-time is fascinating. ",
-  "CRDTs enable conflict-free synchronization across peers. ",
-  "Every keystroke travels through the distributed system. ",
-  "The future of work is asynchronous yet connected. ",
-  "Technology bridges distances between remote teams. ",
-  "Innovation happens when ideas flow freely. ",
-  "Building great products one commit at a time. ",
-  "The web has transformed how we create and share. ",
-  "Open source powers the modern digital world. ",
-  "Real-time sync enables seamless collaboration. ",
-  "Watch as multiple cursors dance across the page. ",
-  "Each peer maintains their own copy of the document. ",
-  "Eventual consistency is the goal of CRDTs. ",
-  "Type, delete, move, repeat - the rhythm of editing. ",
+  'The quick brown fox jumps over the lazy dog. ',
+  'Collaborative editing in real-time is fascinating. ',
+  'CRDTs enable conflict-free synchronization across peers. ',
+  'Every keystroke travels through the distributed system. ',
+  'The future of work is asynchronous yet connected. ',
+  'Technology bridges distances between remote teams. ',
+  'Innovation happens when ideas flow freely. ',
+  'Building great products one commit at a time. ',
+  'The web has transformed how we create and share. ',
+  'Open source powers the modern digital world. ',
+  'Real-time sync enables seamless collaboration. ',
+  'Watch as multiple cursors dance across the page. ',
+  'Each peer maintains their own copy of the document. ',
+  'Eventual consistency is the goal of CRDTs. ',
+  'Type, delete, move, repeat - the rhythm of editing. ',
 ];
 
 // ============ UTILITIES ============
@@ -97,7 +91,7 @@ function pickAction(): keyof typeof CONFIG.actionWeights {
       return action as keyof typeof CONFIG.actionWeights;
     }
   }
-  return "type";
+  return 'type';
 }
 
 function sleep(ms: number): Promise<void> {
@@ -105,10 +99,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 // Calculate window position for tiling
-function getWindowPosition(
-  index: number,
-  total: number
-): { x: number; y: number } {
+function getWindowPosition(index: number, total: number): { x: number; y: number } {
   const cols = Math.ceil(Math.sqrt(total));
   const row = Math.floor(index / cols);
   const col = index % cols;
@@ -125,7 +116,7 @@ class SimulatedClient {
   private page: Page;
   private clientId: number;
   private isRunning = false;
-  private currentText = "";
+  private currentText = '';
   private charIndex = 0;
 
   constructor(page: Page, clientId: number) {
@@ -141,7 +132,7 @@ class SimulatedClient {
     console.log(`[Client ${this.clientId}] Starting simulation...`);
 
     // Focus the editor
-    await this.page.click(".ProseMirror");
+    await this.page.click('.ProseMirror');
 
     // Small delay before starting
     await sleep(randomBetween(500, 2000));
@@ -165,20 +156,22 @@ class SimulatedClient {
     const action = pickAction();
 
     switch (action) {
-      case "type":
+      case 'type':
         await this.typeCharacter();
         break;
-      case "delete":
+      case 'delete':
         await this.deleteText();
         break;
-      case "move":
+      case 'move':
         await this.moveCursor();
         break;
-      case "newline":
+      case 'newline':
         await this.insertNewline();
         break;
-      case "pause":
+      case 'pause':
         await this.takePause();
+        break;
+      default:
         break;
     }
   }
@@ -197,7 +190,7 @@ class SimulatedClient {
 
     // Slower for punctuation/spaces
     const delay =
-      char === " " || char === "." || char === ","
+      char === ' ' || char === '.' || char === ','
         ? randomBetween(CONFIG.maxTypingDelay, CONFIG.maxTypingDelay * 1.5)
         : randomBetween(CONFIG.minTypingDelay, CONFIG.maxTypingDelay);
 
@@ -208,7 +201,7 @@ class SimulatedClient {
     const deleteCount = randomBetween(1, 8);
 
     for (let i = 0; i < deleteCount; i++) {
-      await this.page.keyboard.press("Backspace");
+      await this.page.keyboard.press('Backspace');
       await sleep(randomBetween(30, 80));
     }
 
@@ -217,7 +210,7 @@ class SimulatedClient {
 
   private async moveCursor() {
     // Random cursor movement
-    const movements = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
+    const movements = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
     const movement = pickRandom(movements);
     const times = randomBetween(1, 10);
 
@@ -230,7 +223,7 @@ class SimulatedClient {
   }
 
   private async insertNewline() {
-    await this.page.keyboard.press("Enter");
+    await this.page.keyboard.press('Enter');
     await sleep(randomBetween(200, 500));
   }
 
@@ -244,10 +237,8 @@ class SimulatedClient {
 // ============ MAIN FUNCTIONS ============
 
 async function saveAuthState() {
-  console.log("🔐 Opening browser for authentication...");
-  console.log(
-    "   Please log in with GitHub, then close the browser when done.\n"
-  );
+  console.log('🔐 Opening browser for authentication...');
+  console.log('   Please log in with GitHub, then close the browser when done.\n');
 
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext();
@@ -256,8 +247,8 @@ async function saveAuthState() {
   await page.goto(CONFIG.baseUrl);
 
   // Wait for user to complete login
-  console.log("⏳ Waiting for you to log in...");
-  console.log("   (The script will detect when you reach the home page)\n");
+  console.log('⏳ Waiting for you to log in...');
+  console.log('   (The script will detect when you reach the home page)\n');
 
   // Wait for the authenticated home page (sidebar with user avatar)
   await page.waitForSelector('aside [class*="rounded-full"]', {
@@ -271,7 +262,7 @@ async function saveAuthState() {
   await context.storageState({ path: CONFIG.authStatePath });
 
   console.log(`✅ Auth state saved to ${CONFIG.authStatePath}`);
-  console.log("   You can now run: pnpm simulate\n");
+  console.log('   You can now run: pnpm simulate\n');
 
   await browser.close();
 }
@@ -279,7 +270,7 @@ async function saveAuthState() {
 async function runSimulation() {
   // Check if auth state exists
   if (!fs.existsSync(CONFIG.authStatePath)) {
-    console.error("❌ No auth state found!");
+    console.error('❌ No auth state found!');
     console.error('   Run "pnpm simulate:auth" first to log in.\n');
     process.exit(1);
   }
@@ -308,7 +299,7 @@ async function runSimulation() {
       // Position the window (Playwright doesn't directly support this, but we can try via CDP)
       try {
         const cdpSession = await context.newCDPSession(page);
-        await cdpSession.send("Browser.setWindowBounds", {
+        await cdpSession.send('Browser.setWindowBounds', {
           windowId: 1,
           bounds: {
             left: position.x,
@@ -322,14 +313,12 @@ async function runSimulation() {
       }
 
       // Navigate to the app
-      const url = CONFIG.docId
-        ? `${CONFIG.baseUrl}?doc=${CONFIG.docId}`
-        : CONFIG.baseUrl;
+      const url = CONFIG.docId ? `${CONFIG.baseUrl}?doc=${CONFIG.docId}` : CONFIG.baseUrl;
 
       await page.goto(url);
 
       // Wait for editor to be ready
-      await page.waitForSelector(".ProseMirror", { timeout: 30000 });
+      await page.waitForSelector('.ProseMirror', { timeout: 30000 });
 
       console.log(`✅ Client ${i + 1} connected`);
 
@@ -337,15 +326,15 @@ async function runSimulation() {
       clients.push(new SimulatedClient(page, i + 1));
     }
 
-    console.log("\n🎭 All clients connected! Starting simulation...");
-    console.log("   Press Ctrl+C to stop.\n");
+    console.log('\n🎭 All clients connected! Starting simulation...');
+    console.log('   Press Ctrl+C to stop.\n');
 
     // Start all clients
     const promises = clients.map((client) => client.start());
 
     // Handle graceful shutdown
-    process.on("SIGINT", async () => {
-      console.log("\n\n🛑 Stopping simulation...");
+    process.on('SIGINT', async () => {
+      console.log('\n\n🛑 Stopping simulation...');
       clients.forEach((client) => client.stop());
 
       // Wait a moment for cleanup
@@ -357,14 +346,14 @@ async function runSimulation() {
       }
       await browser.close();
 
-      console.log("👋 Goodbye!\n");
+      console.log('👋 Goodbye!\n');
       process.exit(0);
     });
 
     // Keep running until Ctrl+C
     await Promise.all(promises);
   } catch (error) {
-    console.error("Fatal error:", error);
+    console.error('Fatal error:', error);
     await browser.close();
     process.exit(1);
   }
@@ -374,9 +363,9 @@ async function runSimulation() {
 
 const args = process.argv.slice(2);
 
-if (args.includes("--auth") || args.includes("-a")) {
+if (args.includes('--auth') || args.includes('-a')) {
   saveAuthState();
-} else if (args.includes("--help") || args.includes("-h")) {
+} else if (args.includes('--help') || args.includes('-h')) {
   console.log(`
 Multiplayer Editing Simulation
 ==============================

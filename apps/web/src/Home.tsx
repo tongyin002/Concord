@@ -1,25 +1,22 @@
-import { useCallback, useMemo, useState } from "react";
-import { useQuery, useZero } from "lib/client";
-import { queries, mutators, LoroDoc, LoroMap, LoroMovableList, LoroText } from "lib/shared";
-import { Dialog } from "@base-ui/react/dialog";
-import { Avatar } from "@base-ui/react/avatar";
-import { Input } from "@base-ui/react/input";
-import { useDocIdFromUrl } from "./useDocIdFromUrl";
-import { Editor } from "./Editor";
-import { DocumentListItem } from "./DocumentListItem";
+import { useCallback, useMemo, useState } from 'react';
+import { useQuery, useZero } from 'lib/client';
+import { queries, mutators, LoroDoc, LoroMap, LoroMovableList, LoroText } from 'lib/shared';
+import { Dialog } from '@base-ui/react/dialog';
+import { Avatar } from '@base-ui/react/avatar';
+import { Input } from '@base-ui/react/input';
+import { useDocIdFromUrl } from './useDocIdFromUrl';
+import { Editor } from './Editor';
+import { DocumentListItem } from './DocumentListItem';
 
 const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
   const zero = useZero();
   const [docs] = useQuery(queries.doc.all());
   const [me] = useQuery(queries.user.me());
 
-  const [title, setTitle] = useState("");
-  const handleTitleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setTitle(e.target.value);
-    },
-    []
-  );
+  const [title, setTitle] = useState('');
+  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setTitle(e.target.value);
+  }, []);
   const [selectedDocId, setSelectedDocId] = useDocIdFromUrl();
 
   const handleSelectDoc = useCallback(
@@ -38,13 +35,13 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
 
   const onCreate = useCallback(() => {
     const loroDoc = new LoroDoc();
-    const docRoot = loroDoc.getMap("docRoot");
-    docRoot.set("type", "doc");
-    const docContent = docRoot.setContainer("content", new LoroMovableList());
+    const docRoot = loroDoc.getMap('docRoot');
+    docRoot.set('type', 'doc');
+    const docContent = docRoot.setContainer('content', new LoroMovableList());
     const paragraph = docContent.pushContainer(new LoroMap());
-    paragraph.set("type", "paragraph");
-    paragraph.setContainer("content", new LoroText());
-    const snapshot = loroDoc.export({ mode: "snapshot" });
+    paragraph.set('type', 'paragraph');
+    paragraph.setContainer('content', new LoroText());
+    const snapshot = loroDoc.export({ mode: 'snapshot' });
 
     zero.mutate(
       mutators.doc.create({
@@ -57,7 +54,7 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
 
   const editorUser = useMemo(
     () => ({
-      name: me?.name ?? "test_user",
+      name: me?.name ?? 'test_user',
       color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
     }),
     [me]
@@ -73,12 +70,7 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           New Document
         </Dialog.Trigger>
@@ -129,27 +121,25 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
           <div className="flex items-center gap-3">
             <Avatar.Root className="inline-flex size-10 items-center justify-center overflow-hidden rounded-full bg-linear-to-br from-teal-400 to-cyan-500 ring-2 ring-white shadow-md">
               <Avatar.Image
-                src={me?.image ?? ""}
+                src={me?.image ?? ''}
                 width="40"
                 height="40"
                 className="size-full object-cover"
               />
               <Avatar.Fallback className="flex size-full items-center justify-center text-sm font-semibold text-white">
-                {me?.name?.charAt(0)?.toUpperCase() ?? "U"}
+                {me?.name?.charAt(0)?.toUpperCase() ?? 'U'}
               </Avatar.Fallback>
             </Avatar.Root>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-slate-800 truncate">
-                {me?.name ?? "Guest User"}
+                {me?.name ?? 'Guest User'}
               </p>
               <p className="text-xs text-slate-400 truncate">
                 {me?.email
-                  ? `${me.email[0]}${"*".repeat(
-                      me.email.indexOf("@") - 1
-                    )}@${"*".repeat(
-                      me.email.length - me.email.indexOf("@") - 2
+                  ? `${me.email[0]}${'*'.repeat(me.email.indexOf('@') - 1)}@${'*'.repeat(
+                      me.email.length - me.email.indexOf('@') - 2
                     )}${me.email[me.email.length - 1]}`
-                  : "Not signed in"}
+                  : 'Not signed in'}
               </p>
             </div>
           </div>
@@ -193,9 +183,7 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
                     </svg>
                   </div>
                   <p className="text-sm text-slate-500">No documents yet</p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Create your first document
-                  </p>
+                  <p className="text-xs text-slate-400 mt-1">Create your first document</p>
                 </div>
               )}
             </nav>
@@ -234,9 +222,7 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
         {selectedDoc ? (
           <div className="h-full flex flex-col">
             <header className="h-[72px] shrink-0 px-6 border-b border-slate-200 bg-white flex items-center">
-              <h1 className="text-lg font-semibold text-slate-900">
-                {selectedDoc.title}
-              </h1>
+              <h1 className="text-lg font-semibold text-slate-900">{selectedDoc.title}</h1>
             </header>
             <div className="flex-1 overflow-hidden">
               <Editor docId={selectedDoc.id} user={editorUser} />
@@ -260,12 +246,9 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
                   />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold text-slate-800 mb-2">
-                Select a document
-              </h2>
+              <h2 className="text-xl font-semibold text-slate-800 mb-2">Select a document</h2>
               <p className="text-sm text-slate-500">
-                Choose a document from the sidebar to start editing, or create a
-                new one.
+                Choose a document from the sidebar to start editing, or create a new one.
               </p>
             </div>
           </div>

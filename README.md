@@ -35,6 +35,7 @@ pnpm install && pnpm dev
 ### Environment
 
 **Root `.env`:**
+
 ```bash
 VITE_API_URL=http://localhost:8787
 VITE_WEB_URL=http://localhost:5173
@@ -43,6 +44,7 @@ VITE_WS_URL=ws://localhost:8787
 ```
 
 **`apps/cf-api/.dev.vars`:** (see [GitHub OAuth setup](https://github.com/settings/developers))
+
 ```bash
 GITHUB_CLIENT_ID=your_client_id
 GITHUB_CLIENT_SECRET=your_client_secret

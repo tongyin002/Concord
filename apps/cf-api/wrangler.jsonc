@@ -11,24 +11,21 @@
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      "id": "your-hyperdrive-id-here"
-    }
+      "id": "your-hyperdrive-id-here",
+    },
   ],
   "durable_objects": {
     "bindings": [
       {
         "name": "COLLABORATION_DO",
-        "class_name": "CollaborationDO"
-      }
-    ]
+        "class_name": "CollaborationDO",
+      },
+    ],
   },
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": [
-        "CollaborationDO"
-      ]
-    }
-  ]
+      "new_classes": ["CollaborationDO"],
+    },
+  ],
 }
-

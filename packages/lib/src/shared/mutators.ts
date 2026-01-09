@@ -1,8 +1,8 @@
-import { defineMutators, defineMutator } from "@rocicorp/zero";
-import { z } from "zod";
-import { zql } from "./zero-schema.gen";
-import { LoroDoc } from "loro-crdt";
-import { decodeBase64, encodeBase64 } from "./utils";
+import { defineMutators, defineMutator } from '@rocicorp/zero';
+import { z } from 'zod';
+import { zql } from './zero-schema.gen';
+import { LoroDoc } from 'loro-crdt';
+import { decodeBase64, encodeBase64 } from './utils';
 
 export const mutators = defineMutators({
   doc: {
@@ -41,7 +41,7 @@ export const mutators = defineMutators({
           return; // Nothing to flush
         }
 
-        const doc = await tx.run(zql.doc.where("id", docId).one());
+        const doc = await tx.run(zql.doc.where('id', docId).one());
         if (!doc) {
           throw new Error(`Doc not found: ${docId}`);
         }
@@ -49,9 +49,9 @@ export const mutators = defineMutators({
         const loroDoc = new LoroDoc();
         try {
           loroDoc.configTextStyle({
-            bold: { expand: "none" },
-            italic: { expand: "none" },
-            underline: { expand: "none" },
+            bold: { expand: 'none' },
+            italic: { expand: 'none' },
+            underline: { expand: 'none' },
           });
           loroDoc.setRecordTimestamp(true);
 
@@ -59,15 +59,12 @@ export const mutators = defineMutators({
           try {
             loroDoc.import(decodeBase64(doc.content));
           } catch (importError) {
-            console.error(
-              `Failed to import existing doc content for ${docId}:`,
-              importError
-            );
+            console.error(`Failed to import existing doc content for ${docId}:`, importError);
             throw new Error(`Corrupted document content: ${docId}`);
           }
 
           loroDoc.importBatch(updates.map((update) => decodeBase64(update)));
-          const snapshot = loroDoc.export({ mode: "snapshot" });
+          const snapshot = loroDoc.export({ mode: 'snapshot' });
           await tx.mutate.doc.update({
             id: docId,
             content: encodeBase64(snapshot),

@@ -1,11 +1,11 @@
-import { DurableObject } from "cloudflare:workers";
-import { createDB, createZeroDBProvider } from "lib/server";
-import { mutators } from "lib/shared";
+import { DurableObject } from 'cloudflare:workers';
+import { createDB, createZeroDBProvider } from 'lib/server';
+import { mutators } from 'lib/shared';
 
 /** Storage keys for persisting state */
 const STORAGE_KEYS = {
-  PENDING_UPDATES: "pendingUpdates",
-  DOC_ID: "docId",
+  PENDING_UPDATES: 'pendingUpdates',
+  DOC_ID: 'docId',
 } as const;
 
 /** Maximum number of updates to buffer before forcing a flush */
@@ -29,7 +29,7 @@ async function flushUpdatesToDatabase(
     await mutators.doc.flushUpdates.fn({
       tx: tr,
       args: { docId, updates },
-      ctx: { userID: "system" },
+      ctx: { userID: 'system' },
     });
   });
 }
@@ -44,11 +44,7 @@ async function flushUpdatesToDatabase(
  */
 export class CollaborationDO extends DurableObject<CloudflareBindings> {
   private async getPendingUpdates(): Promise<PendingUpdate[]> {
-    return (
-      (await this.ctx.storage.get<PendingUpdate[]>(
-        STORAGE_KEYS.PENDING_UPDATES
-      )) ?? []
-    );
+    return (await this.ctx.storage.get<PendingUpdate[]>(STORAGE_KEYS.PENDING_UPDATES)) ?? [];
   }
 
   private async setPendingUpdates(updates: PendingUpdate[]): Promise<void> {
@@ -70,10 +66,10 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
   async fetch(request: Request) {
     // Extract docId from the request URL
     const url = new URL(request.url);
-    const requestDocId = url.searchParams.get("docId");
+    const requestDocId = url.searchParams.get('docId');
 
     if (!requestDocId) {
-      return new Response("docId is required", { status: 400 });
+      return new Response('docId is required', { status: 400 });
     }
 
     // Initialize or validate the docId for this DO
@@ -83,10 +79,8 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
       await this.setDocId(requestDocId);
     } else if (existingDocId !== requestDocId) {
       // Mismatch - this should not happen if routing is correct
-      console.error(
-        `DocId mismatch: expected ${existingDocId}, got ${requestDocId}`
-      );
-      return new Response("Document ID mismatch", { status: 400 });
+      console.error(`DocId mismatch: expected ${existingDocId}, got ${requestDocId}`);
+      return new Response('Document ID mismatch', { status: 400 });
     }
 
     const webSocketPair = new WebSocketPair();
@@ -120,7 +114,7 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
       return;
     }
 
-    if (parsed?.type === "update" && parsed.data) {
+    if (parsed?.type === 'update' && parsed.data) {
       // Validate docId if provided in message
       const expectedDocId = await this.getDocId();
       if (parsed.docId && parsed.docId !== expectedDocId) {
@@ -135,9 +129,7 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
 
       // Check buffer size limit
       if (pendingUpdates.length >= MAX_PENDING_UPDATES) {
-        console.warn(
-          `Buffer full (${MAX_PENDING_UPDATES} updates), forcing immediate flush`
-        );
+        console.warn(`Buffer full (${MAX_PENDING_UPDATES} updates), forcing immediate flush`);
         await this.alarm();
       }
 
@@ -175,7 +167,7 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
       // Clear buffer after successful flush
       await this.setPendingUpdates([]);
     } catch (error) {
-      console.error("Failed to flush updates:", error);
+      console.error('Failed to flush updates:', error);
       // Reschedule to retry
       await this.ctx.storage.setAlarm(Date.now() + 20000);
     }
@@ -199,10 +191,10 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
   }
 
   webSocketError(ws: WebSocket, error: unknown): void {
-    console.error("WebSocket error:", error);
+    console.error('WebSocket error:', error);
     // Close the connection on error
     try {
-      ws.close(1011, "Internal error");
+      ws.close(1011, 'Internal error');
     } catch {
       // Socket might already be closed
     }

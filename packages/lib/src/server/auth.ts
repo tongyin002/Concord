@@ -1,7 +1,7 @@
-import { betterAuth } from "better-auth/minimal";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import * as schema from "../shared/schema";
-import type { DrizzleDB } from "./db";
+import { betterAuth } from 'better-auth/minimal';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import * as schema from '../shared/schema';
+import type { DrizzleDB } from './db';
 
 interface AuthEnv {
   GITHUB_CLIENT_ID: string;
@@ -18,14 +18,14 @@ interface AuthEnv {
  */
 function getTrustedOrigins(env: AuthEnv): string[] {
   if (env.TRUSTED_ORIGINS) {
-    return env.TRUSTED_ORIGINS.split(",").map((o) => o.trim());
+    return env.TRUSTED_ORIGINS.split(',').map((o) => o.trim());
   }
   // Default development origins
   return [
-    "http://localhost:5173",
-    "http://localhost:8787",
-    "http://localhost:4848",
-    "http://localhost:3000",
+    'http://localhost:5173',
+    'http://localhost:8787',
+    'http://localhost:4848',
+    'http://localhost:3000',
   ];
 }
 
@@ -38,7 +38,7 @@ export function createAuth(db: DrizzleDB, env: AuthEnv) {
     baseURL: env.BETTER_AUTH_URL,
     trustedOrigins: getTrustedOrigins(env),
     database: drizzleAdapter(db, {
-      provider: "pg",
+      provider: 'pg',
       schema,
     }),
     cookieCache: {
