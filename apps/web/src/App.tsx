@@ -1,8 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { Button } from "@base-ui/react";
 import HomePage from "./Home";
-import { createAuth } from "lib/auth-client";
-import { Zero, createZeroOptions, ZeroProvider } from "lib/zero-client";
+import { createAuth, Zero, createZeroOptions, ZeroProvider } from "lib/client";
 
 // Create auth client with API URL from env
 const authClient = createAuth(

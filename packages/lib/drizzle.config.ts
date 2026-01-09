@@ -5,7 +5,7 @@ config({ path: '../../.env' });
 
 export default defineConfig({
   out: './drizzle',
-  schema: './src/schema.ts',
+  schema: './src/shared/schema.ts',
   dialect: 'postgresql',
   dbCredentials: {
     url: process.env.ZERO_UPSTREAM_DB as string,

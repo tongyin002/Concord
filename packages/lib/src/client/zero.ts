@@ -1,10 +1,7 @@
 import { ZeroOptions } from '@rocicorp/zero';
-import { schema, type Schema } from './zero-schema.gen';
-import { ZeroContext } from './queries';
-import { mutators } from './mutators';
-
-export { Zero } from '@rocicorp/zero';
-export * from '@rocicorp/zero/react';
+import { schema, type Schema } from '../shared/zero-schema.gen';
+import { ZeroContext } from '../shared/queries';
+import { mutators } from '../shared/mutators';
 
 /**
  * Creates Zero options with the specified server URL.

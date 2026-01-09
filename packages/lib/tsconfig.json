@@ -22,6 +22,6 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true
   },
-  "include": ["src/**/*", "./drizzle.config.ts", "./drizzle-zero.config.ts"],
+  "include": ["src/**/*", "drizzle.config.ts", "drizzle-zero.config.ts"],
   "exclude": ["node_modules"]
 }

@@ -1,5 +1,5 @@
 import { EditorState, Plugin, PluginKey, Transaction } from 'prosemirror-state';
-import { ContainerID, isContainer, LoroDoc, LoroMap, LoroText } from 'loro-crdt';
+import { type ContainerID, isContainer, LoroDoc, LoroMap, LoroText } from 'lib/shared';
 import { AddMarkStep, AttrStep, RemoveMarkStep, ReplaceStep } from 'prosemirror-transform';
 import { getLoroNodeFromPMNode } from './pmToLoro';
 import { assert, isLoroDocument, isLoroParagraph, isMovableList } from './loroUtils';

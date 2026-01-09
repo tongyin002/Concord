@@ -1,6 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
-import { createDB, createZeroDBProvider } from "lib/db-cf";
-import { mutators } from "lib/zero";
+import { createDB, createZeroDBProvider } from "lib/server";
+import { mutators } from "lib/shared";
 
 /** Storage keys for persisting state */
 const STORAGE_KEYS = {

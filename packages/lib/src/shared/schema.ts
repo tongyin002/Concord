@@ -1,7 +1,4 @@
-import { relations, eq } from 'drizzle-orm';
-
-// Re-export drizzle-orm utilities for consumers
-export { eq };
+import { relations } from 'drizzle-orm';
 import { pgTable, text, timestamp, boolean, index } from 'drizzle-orm/pg-core';
 
 // Auth schema

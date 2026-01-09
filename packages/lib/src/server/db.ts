@@ -1,6 +1,6 @@
 import { zeroDrizzle } from '@rocicorp/zero/server/adapters/drizzle';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { schema } from './zero-schema.gen';
+import { schema } from '../shared/zero-schema.gen';
 
 interface HyperdriveBinding {
   connectionString: string;

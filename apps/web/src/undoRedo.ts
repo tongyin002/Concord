@@ -6,7 +6,7 @@ import {
   PluginKey,
   TextSelection,
 } from 'prosemirror-state';
-import { LoroDoc, UndoManager } from 'loro-crdt';
+import { LoroDoc, UndoManager } from 'lib/shared';
 import { getLoroCursorFromPMPosition, getPMPositionFromLoroCursor } from './collabCaret';
 
 const pluginKey = new PluginKey<{

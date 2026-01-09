@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useCallback } from "react";
-import { LoroDoc } from "loro-crdt";
-import { decodeBase64, encodeBase64 } from "lib/sharedUtils";
-import { useQuery } from "lib/zero-client";
-import { queries } from "../../../packages/lib/src/queries";
+import { LoroDoc, decodeBase64, encodeBase64, queries } from "lib/shared";
+import { useQuery } from "lib/client";
 import { PresenceStore } from "./presenceStore";
 
 interface UseCollaborativeDocOptions {

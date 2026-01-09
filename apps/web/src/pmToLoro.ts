@@ -1,4 +1,4 @@
-import { isContainer, isContainerId, LoroDoc } from 'loro-crdt';
+import { isContainer, isContainerId, LoroDoc } from 'lib/shared';
 import { Node } from 'prosemirror-model';
 import { isLoroMap } from './loroUtils';
 import { LORO_ID_ATTR } from './loroToPm';

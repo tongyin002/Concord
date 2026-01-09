@@ -1,6 +1,6 @@
 import { Fragment, Mark, Node, NodeSpec, Schema, SchemaSpec } from 'prosemirror-model';
 import 'prosemirror-view/style/prosemirror.css';
-import { LoroDoc, LoroText, isContainer, LoroMap } from 'loro-crdt';
+import { LoroDoc, LoroText, isContainer, LoroMap } from 'lib/shared';
 import { isLoroText, isMovableList } from './loroUtils';
 
 export const LORO_ID_ATTR = 'loro-id';

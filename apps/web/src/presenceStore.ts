@@ -1,4 +1,4 @@
-import { Cursor, EphemeralStore } from 'loro-crdt';
+import { Cursor, EphemeralStore } from 'lib/shared';
 
 export class PresenceStore extends EphemeralStore<{
   [peerId: string]: {

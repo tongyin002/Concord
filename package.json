@@ -21,14 +21,6 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "@rocicorp/zero-sqlite3"
-    ],
-    "overrides": {
-      "loro-crdt": "1.10.3",
-      "@rocicorp/zero": "0.25.7",
-      "drizzle-orm": "0.45.1",
-      "better-auth": "1.4.9",
-      "zod": "4.2.1",
-      "miniflare>zod": "3.24.2"
-    }
+    ]
   }
 }

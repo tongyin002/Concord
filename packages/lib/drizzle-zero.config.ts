@@ -1,6 +1,6 @@
 import { drizzleZeroConfig } from 'drizzle-zero';
 // directly glob import your original Drizzle schema w/ tables/relations
-import * as drizzleSchema from './src/schema';
+import * as drizzleSchema from './src/shared/schema';
 
 // Define your configuration file for the CLI
 export default drizzleZeroConfig(drizzleSchema, {

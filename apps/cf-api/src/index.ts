@@ -1,18 +1,15 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { createAuth } from "lib/auth-cf";
-import { createDB, createZeroDBProvider } from "lib/db-cf";
-import { doc, eq } from "lib/schema";
 import {
+  createAuth,
+  createDB,
+  createZeroDBProvider,
   handleMutateRequest,
   handleQueryRequest,
   mustGetMutator,
   mustGetQuery,
-  mutators,
-  queries,
-  schema,
-  type ZeroContext,
-} from "lib/zero";
+} from "lib/server";
+import { mutators, queries, schema, zql, type ZeroContext } from "lib/shared";
 
 // Re-export Durable Object for wrangler
 export { CollaborationDO } from "./CollaborationDO";
@@ -133,11 +130,8 @@ app.get("/ws", async (c) => {
 
   // Verify document exists
   const db = c.get("db");
-  const [document] = await db
-    .select({ id: doc.id })
-    .from(doc)
-    .where(eq(doc.id, docId))
-    .limit(1);
+  const zeroDBProvider = createZeroDBProvider(db);
+  const document = await zeroDBProvider.run(zql.doc.where("id", docId).one());
 
   if (!document) {
     return c.json({ error: "Document not found" }, 404);

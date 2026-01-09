@@ -4,19 +4,14 @@
   "description": "",
   "type": "module",
   "exports": {
-    "./auth-cf": "./src/auth-cf.ts",
-    "./auth-client": "./src/auth-client.ts",
-    "./db-cf": "./src/db-cf.ts",
-    "./loro": "./src/loro.ts",
-    "./schema": "./src/schema.ts",
-    "./zero": "./src/zero.ts",
-    "./zero-client": "./src/zero-client.ts",
-    "./sharedUtils": "./src/sharedUtils.ts"
+    "./client": "./src/client/index.ts",
+    "./server": "./src/server/index.ts",
+    "./shared": "./src/shared/index.ts"
   },
   "scripts": {
     "dev": "pnpm exec zero-cache-dev",
     "lint": "oxlint --type-aware",
-    "generate": "drizzle-zero generate --format --output ./src/zero-schema.gen.ts",
+    "generate": "drizzle-zero generate --format --output ./src/shared/zero-schema.gen.ts",
     "postinstall": "pnpm run generate"
   },
   "keywords": [],

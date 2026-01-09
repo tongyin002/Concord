@@ -1,12 +1,12 @@
 import {
-  Container,
+  type Container,
   Cursor,
   isContainer,
   LoroList,
   LoroMap,
   LoroMovableList,
   LoroText,
-} from 'loro-crdt';
+} from 'lib/shared';
 
 export type LoroParagraph = {
   type: 'paragraph';

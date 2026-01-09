@@ -2,7 +2,7 @@ import { defineMutators, defineMutator } from "@rocicorp/zero";
 import { z } from "zod";
 import { zql } from "./zero-schema.gen";
 import { LoroDoc } from "loro-crdt";
-import { decodeBase64, encodeBase64 } from "./sharedUtils";
+import { decodeBase64, encodeBase64 } from "./utils";
 
 export const mutators = defineMutators({
   doc: {

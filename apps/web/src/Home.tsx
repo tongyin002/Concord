@@ -1,14 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
-import { useQuery, useZero } from "lib/zero-client";
-import { queries } from "../../../packages/lib/src/queries";
-import { mutators } from "../../../packages/lib/src/mutators";
+import { useQuery, useZero } from "lib/client";
+import { queries, mutators, LoroDoc, LoroMap, LoroMovableList, LoroText } from "lib/shared";
 import { Dialog } from "@base-ui/react/dialog";
 import { Avatar } from "@base-ui/react/avatar";
 import { Input } from "@base-ui/react/input";
 import { useDocIdFromUrl } from "./useDocIdFromUrl";
 import { Editor } from "./Editor";
 import { DocumentListItem } from "./DocumentListItem";
-import { LoroDoc, LoroMap, LoroMovableList, LoroText } from "lib/loro";
 
 const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
   const zero = useZero();
