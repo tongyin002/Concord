@@ -1,11 +1,11 @@
-import { useEffect, useRef, memo } from 'react';
+import { baseKeymap, toggleMark } from 'prosemirror-commands';
+import { keymap } from 'prosemirror-keymap';
 import { EditorState } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
-import { keymap } from 'prosemirror-keymap';
-import { baseKeymap, toggleMark } from 'prosemirror-commands';
-import { loroDocToPMDoc, pmSchema } from './loroToPm';
-import { loroSyncAdvanced, updateLoroDocGivenTransaction } from './loroSync';
+import { memo, useEffect, useRef } from 'react';
 import { collabCaret } from './collabCaret';
+import { loroSyncAdvanced, updateLoroDocGivenTransaction } from './loroSync';
+import { loroDocToPMDoc, pmSchema } from './loroToPm';
 import { redo, undo, undoRedo } from './undoRedo';
 import { useCollaborativeDoc } from './useCollaborativeDoc';
 
@@ -30,7 +30,6 @@ interface EditorProps {
  */
 export const Editor = ({ docId, user, editable = true }: EditorProps) => {
   const { loroDoc, presenceStore, sendUpdate } = useCollaborativeDoc({ docId });
-
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
 

@@ -11,9 +11,9 @@ const zeroOptions = createZeroOptions(import.meta.env.VITE_ZERO_URL ?? 'http://l
 
 const App = () => {
   const { data, isPending, error } = authClient.useSession();
+  const userID = data?.session.userId;
 
   const zero = useMemo(() => {
-    const userID = data?.session.userId;
     if (!userID) return null;
 
     return new Zero({
@@ -23,7 +23,7 @@ const App = () => {
         userID,
       },
     });
-  }, [data?.session.userId]);
+  }, [userID]);
 
   const onSignIn = useCallback(() => {
     authClient.signIn.social({

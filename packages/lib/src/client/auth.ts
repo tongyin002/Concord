@@ -16,9 +16,3 @@ export function createAuth(baseURL: string) {
     },
   });
 }
-
-/**
- * Default auth client for development.
- * In production, use createAuth() with your actual API URL.
- */
-export const authClient = createAuth('http://localhost:8787');

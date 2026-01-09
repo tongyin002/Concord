@@ -3,7 +3,7 @@
 // Zero client and React hooks
 export { Zero } from '@rocicorp/zero';
 export * from '@rocicorp/zero/react';
-export { createZeroOptions, zeroBaseOptions } from './zero';
+export { createZeroOptions } from './zero';
 
 // Auth client
-export { createAuth, authClient } from './auth';
+export { createAuth } from './auth';
