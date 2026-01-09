@@ -11,18 +11,20 @@ https://github.com/user-attachments/assets/abe82973-426c-4bdb-97b1-158bb1381426
 ```mermaid
 graph TB
     Web["Web Client<br/>(React + ProseMirror + Loro)"]
-    API["Cloudflare Worker<br/>(Hono API)"]
-    DO["Durable Object<br/>(WebSocket Relay)"]
-    DB["PostgreSQL<br/>(Document Storage)"]
-    Zero["Zero Sync<br/>(Data Layer)"]
+    Zero["Zero Cache Server<br/>(@rocicorp/zero)"]
+    API["Cloudflare Worker API<br/>(Hono + Better Auth)"]
+    DO["Durable Object<br/>(WebSocket Relay + CRDT Buffer)"]
+    DB["PostgreSQL<br/>(Hyperdrive)"]
 
-    Web -->|WebSocket| DO
-    DO -->|Relay Updates| Web
-    DO -->|Batch Flush| API
-    API -->|Read/Write| DB
-    DB -->|Sync Data| Zero
-    Zero -->|queries/mutators| API
-    Web -->|Query Docs| Zero
+    Web -->|Zero queries & mutators| Zero
+    Zero -->|/api/zero/* fetch| API
+    API -->|Read / Write| DB
+    DB -->|Snapshot sync| Zero
+
+    Web -->|WebSocket /ws| API
+    API -->|Route to DO| DO
+    DO -->|Broadcast CRDT deltas| Web
+    DO -->|Batch flush updates| DB
 ```
 
 ## Quick Start
