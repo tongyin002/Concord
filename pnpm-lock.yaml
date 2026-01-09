@@ -30,17 +30,17 @@ importers:
   apps/cf-api:
     dependencies:
       hono:
-        specifier: ^4.9.5
+        specifier: ^4.11.3
         version: 4.11.3
       lib:
         specifier: workspace:*
         version: link:../../packages/lib
     devDependencies:
       '@cloudflare/workers-types':
-        specifier: ^4.20251230.0
+        specifier: ^4.20260109.0
         version: 4.20260109.0
       wrangler:
-        specifier: ^4.54.0
+        specifier: ^4.58.0
         version: 4.58.0(@cloudflare/workers-types@4.20260109.0)
 
   apps/web:
@@ -113,10 +113,10 @@ importers:
   packages/lib:
     dependencies:
       '@rocicorp/zero':
-        specifier: ^0.25.7
+        specifier: ^0.25.8
         version: 0.25.8(@opentelemetry/core@2.3.0(@opentelemetry/api@1.9.0))
       better-auth:
-        specifier: ^1.4.9
+        specifier: ^1.4.10
         version: 1.4.10(drizzle-kit@0.31.8)(drizzle-orm@0.45.1(@cloudflare/workers-types@4.20260109.0)(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(kysely@0.28.9)(pg@8.16.3)(postgres@3.4.8))(pg@8.16.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       drizzle-orm:
         specifier: ^0.45.1
@@ -128,7 +128,7 @@ importers:
         specifier: ^8.16.3
         version: 8.16.3
       zod:
-        specifier: ^4.2.1
+        specifier: ^4.3.5
         version: 4.3.5
     devDependencies:
       '@types/pg':
