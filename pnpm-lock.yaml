@@ -15,13 +15,13 @@ importers:
         specifier: ^0.21.0
         version: 0.21.0
       oxlint:
-        specifier: ^1.36.0
+        specifier: ^1.38.0
         version: 1.38.0(oxlint-tsgolint@0.10.1)
       oxlint-tsgolint:
-        specifier: ^0.10.0
+        specifier: ^0.10.1
         version: 0.10.1
       turbo:
-        specifier: ^2.7.2
+        specifier: ^2.7.3
         version: 2.7.3
       typescript:
         specifier: ^5.9.3
