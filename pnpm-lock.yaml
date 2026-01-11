@@ -122,8 +122,8 @@ importers:
         specifier: ^0.45.1
         version: 0.45.1(@cloudflare/workers-types@4.20260109.0)(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(kysely@0.28.9)(pg@8.16.3)(postgres@3.4.8)
       loro-crdt:
-        specifier: ^1.10.3
-        version: 1.10.3
+        specifier: ^1.10.4
+        version: 1.10.4
       pg:
         specifier: ^8.16.3
         version: 8.16.3
@@ -3006,8 +3006,8 @@ packages:
   long@5.3.2:
     resolution: {integrity: sha512-mNAgZ1GmyNhD7AuqnTG3/VQ26o760+ZYBPKjPvugO8+nLbYfX6TVpJPseBvopbdY+qpZ/lKUnmEc1LeZYS3QAA==, tarball: https://artifactory.rbx.com/artifactory/api/npm/npm-all/long/-/long-5.3.2.tgz}
 
-  loro-crdt@1.10.3:
-    resolution: {integrity: sha512-vzWkVw7mWrKTilPjrgAhhzjAyOn3/DaUPJxdK9lunpEI1Y+uQMDBt/pEtRiovKFtGXo4tUVfULnFc7H/ufGwkQ==, tarball: https://artifactory.rbx.com/artifactory/api/npm/npm-all/loro-crdt/-/loro-crdt-1.10.3.tgz}
+  loro-crdt@1.10.4:
+    resolution: {integrity: sha512-+BKM5kf8S/e/8tXwaNyy4rihXH3bEjega97kAFywVjQM6hcp2NTa2eGQyDuW4mhj2ezcwHCyR9YrGTq30S6Kow==, tarball: https://artifactory.rbx.com/artifactory/api/npm/npm-all/loro-crdt/-/loro-crdt-1.10.4.tgz}
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==, tarball: https://artifactory.rbx.com/artifactory/api/npm/npm-all/lru-cache/-/lru-cache-5.1.1.tgz}
@@ -6411,7 +6411,7 @@ snapshots:
 
   long@5.3.2: {}
 
-  loro-crdt@1.10.3: {}
+  loro-crdt@1.10.4: {}
 
   lru-cache@5.1.1:
     dependencies:
