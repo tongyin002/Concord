@@ -7,7 +7,7 @@ export class PresenceStore extends EphemeralStore<{
     user: {
       name: string;
       color: string;
-    } | null;
+    };
   };
 }> {
   private readonly peer: string;
@@ -25,24 +25,16 @@ export class PresenceStore extends EphemeralStore<{
     return {
       anchor: anchor ? Cursor.decode(anchor) : null,
       head: head ? Cursor.decode(head) : null,
-      user: user ?? null,
+      user: user,
     };
   }
 
-  setLocal(
-    anchor: Cursor | null,
-    head: Cursor | null,
-    user: { name: string; color: string } | null
-  ) {
+  setLocal(anchor: Cursor | null, head: Cursor | null, user: { name: string; color: string }) {
     this.set(this.peer, {
       anchor: anchor ? anchor.encode() : null,
       head: head ? head.encode() : null,
-      user: user ?? null,
+      user: user,
     });
-  }
-
-  hasLocal() {
-    return this.get(this.peer) !== undefined;
   }
 
   deleteLocal() {
@@ -58,9 +50,9 @@ export class PresenceStore extends EphemeralStore<{
       .map(([peerId, state]) => {
         return {
           peerId,
-          anchor: state?.anchor ? Cursor.decode(state.anchor) : null,
-          head: state?.head ? Cursor.decode(state.head) : null,
-          user: state?.user ?? null,
+          anchor: state!.anchor ? Cursor.decode(state!.anchor) : null,
+          head: state!.head ? Cursor.decode(state!.head) : null,
+          user: state!.user,
         };
       });
   }

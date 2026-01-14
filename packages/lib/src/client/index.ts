@@ -7,3 +7,7 @@ export { createZeroOptions } from './zero';
 
 // Auth client
 export { createAuth } from './auth';
+
+// Loro client
+export * from 'loro-adaptors/loro';
+export * from 'loro-websocket/client';

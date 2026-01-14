@@ -25,7 +25,7 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": ["CollaborationDO"],
+      "new_sqlite_classes": ["CollaborationDO"],
     },
   ],
 }

@@ -46,10 +46,9 @@ export function getPMPositionFromLoroCursor(cursor: Cursor, loroDoc: LoroDoc, st
 function createDecorationsForPeer(
   loroDoc: LoroDoc,
   state: EditorState,
-  peerId: string,
   anchor: ReturnType<typeof Cursor.decode> | null,
   head: ReturnType<typeof Cursor.decode> | null,
-  user: { name: string; color: string } | null
+  user: { peerId: string; name: string; color: string }
 ): Decoration[] {
   const decorations: Decoration[] = [];
 
@@ -72,7 +71,7 @@ function createDecorationsForPeer(
           'pointer-events-none',
           'break-normal'
         );
-        const cursorColor = user?.color ?? 'black';
+        const cursorColor = user.color;
         cursorContainer.style.borderColor = `color-mix(in srgb, ${cursorColor} 30%, transparent)`;
 
         const userDiv = document.createElement('div');
@@ -86,7 +85,7 @@ function createDecorationsForPeer(
           'whitespace-nowrap'
         );
         userDiv.style.backgroundColor = `color-mix(in srgb, ${cursorColor} 50%, white)`;
-        userDiv.insertBefore(document.createTextNode(`${peerId ?? 'Unknown'}`), null);
+        userDiv.insertBefore(document.createTextNode(`${user.name}`), null);
 
         const nonbreakingSpace1 = document.createTextNode('\u2060');
         const nonbreakingSpace2 = document.createTextNode('\u2060');
@@ -95,7 +94,7 @@ function createDecorationsForPeer(
         cursorContainer.insertBefore(nonbreakingSpace2, null);
         return cursorContainer;
       },
-      { peerId }
+      { peerId: user.peerId }
     )
   );
 
@@ -112,7 +111,7 @@ function createDecorationsForPeer(
           {
             style: `background-color: color-mix(in srgb, ${selectionColor} 30%, transparent);`,
           },
-          { peerId }
+          { peerId: user.peerId }
         )
       );
     }
@@ -146,7 +145,7 @@ export function collabCaret(
       init: (_config, state) => {
         const presenceData = store.getAll();
         const decorations = presenceData.flatMap(({ peerId, anchor, head, user }) =>
-          createDecorationsForPeer(loroDoc, state, peerId, anchor, head, user)
+          createDecorationsForPeer(loroDoc, state, anchor, head, { ...user, peerId })
         );
         // Free cursors after creating decorations to prevent memory leaks
         presenceData.forEach(({ anchor, head }) => {
@@ -176,7 +175,7 @@ export function collabCaret(
           presenceData.forEach(({ peerId, anchor, head, user }) => {
             if (updated.has(peerId)) {
               newDecorations.push(
-                ...createDecorationsForPeer(loroDoc, newState, peerId, anchor, head, user)
+                ...createDecorationsForPeer(loroDoc, newState, anchor, head, { ...user, peerId })
               );
             }
           });

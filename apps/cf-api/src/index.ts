@@ -133,8 +133,7 @@ app.get('/ws', async (c) => {
     return c.json({ error: 'Document not found' }, 404);
   }
 
-  const id = c.env.COLLABORATION_DO.idFromName(docId);
-  const stub = c.env.COLLABORATION_DO.get(id);
+  const stub = c.env.COLLABORATION_DO.getByName(docId);
 
   // Forward the request with user context in a custom header
   const modifiedRequest = new Request(c.req.raw, {

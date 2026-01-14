@@ -18,10 +18,13 @@
     "postinstall": "pnpm run generate"
   },
   "dependencies": {
-    "@rocicorp/zero": "^0.25.8",
+    "@rocicorp/zero": "^0.25.9",
     "better-auth": "^1.4.10",
     "drizzle-orm": "^0.45.1",
+    "loro-adaptors": "^0.6.1",
     "loro-crdt": "^1.10.4",
+    "loro-protocol": "^0.3.0",
+    "loro-websocket": "^0.6.2",
     "pg": "^8.16.3",
     "zod": "^4.3.5"
   },
