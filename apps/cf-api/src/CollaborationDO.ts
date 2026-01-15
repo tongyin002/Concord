@@ -1,17 +1,14 @@
 import { DurableObject } from 'cloudflare:workers';
-import { randomBytes } from 'node:crypto';
 import {
   CrdtType,
   createDB,
   createZeroDBProvider,
   decode,
-  DocUpdate,
   encode,
   JoinErrorCode,
   JoinRequest,
   MessageBase,
   MessageType,
-  RoomErrorCode,
   UpdateStatusCode,
 } from 'lib/server';
 import { decodeBase64, encodeBase64, LoroDoc, zql } from 'lib/shared';
@@ -36,11 +33,12 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
 
     this.sql = ctx.storage.sql;
     this.kv = ctx.storage.kv;
-    // create doc_update table in sqlite with priamry id auto generated, updates column with binary data
+
+    // create doc_update table in sqlite with primary id auto generated, updates column with base64 encoded data
     this.sql.exec(`
         CREATE TABLE IF NOT EXISTS doc_update (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          updates BLOB NOT NULL
+          updates TEXT NOT NULL
         )
       `);
   }
@@ -78,7 +76,7 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
       case MessageType.Ack:
         break;
       case MessageType.DocUpdate:
-        this.handleDocUpdate(decodedMessage, ws);
+        this.handleDocUpdate(message, ws);
         break;
       case MessageType.DocUpdateFragmentHeader:
         break;
@@ -139,66 +137,28 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
   }
 
   private async handleJoinLoroDoc(joinRequest: JoinRequest, ws: WebSocket) {
-    const db = createDB(this.env.HYPERDRIVE);
-    const zeroDBProvider = createZeroDBProvider(db);
-    const doc = await zeroDBProvider.run(zql.doc.where('id', this.docId).one());
-
-    if (!doc) {
-      ws.send(
-        encode({
-          type: MessageType.JoinError,
-          code: JoinErrorCode.Unknown,
-          message: 'Document not found',
-          crdt: joinRequest.crdt,
-          roomId: joinRequest.roomId,
-        })
-      );
-      return;
-    }
-
-    let docContentBytes = decodeBase64(doc.content);
-    const rows = this.sql
-      .exec<{ updates: ArrayBuffer }>(
-        `
-      SELECT updates FROM doc_update
-    `
-      )
-      .toArray();
-
-    const loroDoc = new LoroDoc();
-    loroDoc.configTextStyle({
-      bold: { expand: 'none' },
-      italic: { expand: 'none' },
-      underline: { expand: 'none' },
-    });
-    loroDoc.setRecordTimestamp(true);
-    loroDoc.import(docContentBytes);
-
-    if (rows.length > 0) {
-      loroDoc.importBatch(rows.map(({ updates }) => new Uint8Array(updates)));
-      docContentBytes = loroDoc.export({ mode: 'snapshot' });
-    }
-
     ws.send(
       encode({
         type: MessageType.JoinResponseOk,
         permission: 'write',
         roomId: joinRequest.roomId,
         crdt: joinRequest.crdt,
-        version: loroDoc.version().encode(),
+        version: joinRequest.version,
       })
     );
 
-    const batchId = `0x${randomBytes(8).toString('hex')}` as const;
-    ws.send(
-      encode({
-        type: MessageType.DocUpdate,
-        crdt: joinRequest.crdt,
-        roomId: joinRequest.roomId,
-        updates: [docContentBytes],
-        batchId,
-      })
-    );
+    const rows = this.sql
+      .exec<{ updates: string }>(
+        `
+      SELECT updates FROM doc_update
+    `
+      )
+      .toArray();
+
+    rows.forEach(({ updates }) => {
+      const bytes = decodeBase64(updates);
+      ws.send(bytes);
+    });
   }
 
   private async handleJoinLoroEphemeralDoc(joinRequest: JoinRequest, ws: WebSocket) {
@@ -213,106 +173,49 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
     );
   }
 
-  private async handleDocUpdate(docUpdate: DocUpdate, givenWs: WebSocket) {
-    if (!this.isCorrectRoomId(docUpdate)) {
-      givenWs.send(
-        encode({
-          type: MessageType.RoomError,
-          code: RoomErrorCode.Unknown,
-          message: 'Invalid room id',
-          roomId: docUpdate.roomId,
-          crdt: docUpdate.crdt,
-        })
-      );
+  private async handleDocUpdate(encodedMessage: ArrayBuffer, givenWs: WebSocket) {
+    const decodedMessage = decode(new Uint8Array(encodedMessage));
+    if (decodedMessage.type !== MessageType.DocUpdate) {
       return;
     }
 
     this.ctx.getWebSockets().forEach((ws) => {
       if (ws !== givenWs) {
-        ws.send(encode(docUpdate));
+        ws.send(encodedMessage);
       } else {
         ws.send(
           encode({
             type: MessageType.Ack,
-            refId: docUpdate.batchId,
+            refId: decodedMessage.batchId,
             status: UpdateStatusCode.Ok,
-            crdt: docUpdate.crdt,
-            roomId: docUpdate.roomId,
+            crdt: decodedMessage.crdt,
+            roomId: decodedMessage.roomId,
           })
         );
       }
     });
 
-    if (docUpdate.crdt === CrdtType.LoroEphemeralStore) {
+    if (decodedMessage.crdt === CrdtType.LoroEphemeralStore) {
       return;
     }
 
     // insert updates to table doc_update
-    if (docUpdate.updates.length > 0) {
-      try {
-        const placeholders = docUpdate.updates.map(() => '(?)').join(', ');
-        this.sql.exec(
-          `INSERT INTO doc_update (updates) VALUES ${placeholders};`,
-          ...docUpdate.updates
-        );
-      } catch (err) {
-        console.error(`SQL insert error:`, err);
-      }
+    try {
+      const bytes = new Uint8Array(encodedMessage);
+      const base64 = encodeBase64(bytes);
+      this.sql.exec(`INSERT INTO doc_update (updates) VALUES (?)`, [base64]);
+    } catch (error) {
+      console.error(`SQL insert error:`, error);
     }
 
-    // read updates from table doc_update
-    const rows = this.ctx.storage.sql
-      .exec<{ updates: ArrayBuffer }>(
-        `
-      SELECT updates FROM doc_update;
-    `
-      )
-      .toArray();
-
-    if (rows.length >= 100) {
-      const db = createDB(this.env.HYPERDRIVE);
-      const zeroDBProvider = createZeroDBProvider(db);
-
-      const allUpdates = rows.map(({ updates }) => new Uint8Array(updates));
-      await zeroDBProvider.transaction(async (tr) => {
-        const doc = await tr.run(zql.doc.where('id', docUpdate.roomId).one());
-        if (!doc) {
-          throw new Error(`Doc not found: ${docUpdate.roomId}`);
-        }
-
-        const loroDoc = new LoroDoc();
-        loroDoc.configTextStyle({
-          bold: { expand: 'none' },
-          italic: { expand: 'none' },
-          underline: { expand: 'none' },
-        });
-        loroDoc.setRecordTimestamp(true);
-        loroDoc.importBatch(allUpdates);
-
-        await tr.mutate.doc.update({
-          id: this.docId,
-          content: encodeBase64(loroDoc.export({ mode: 'snapshot' })),
-        });
-
-        this.sql.exec(
-          `
-          DELETE FROM doc_update
-        `
-        );
-      });
-    } else {
-      const alarmTime = await this.ctx.storage.getAlarm();
-      if (alarmTime === null) {
-        await this.ctx.storage.setAlarm(Date.now() + 1000);
-      }
-    }
+    await this.ctx.storage.setAlarm(Date.now() + 10000);
   }
 
   async alarm() {
     // read updates from table doc_update
 
     const rows = this.sql
-      .exec<{ updates: ArrayBuffer }>(
+      .exec<{ updates: string }>(
         `
       SELECT updates FROM doc_update
     `
@@ -323,11 +226,11 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
       const db = createDB(this.env.HYPERDRIVE);
       const zeroDBProvider = createZeroDBProvider(db);
 
-      const allUpdates = rows.map(({ updates }) => new Uint8Array(updates));
       await zeroDBProvider.transaction(async (tr) => {
         const doc = await tr.run(zql.doc.where('id', this.docId).one());
         if (!doc) {
-          throw new Error(`Doc not found: ${this.docId}`);
+          // doc not found, likely deleted
+          return;
         }
 
         const loroDoc = new LoroDoc();
@@ -337,18 +240,25 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
           underline: { expand: 'none' },
         });
         loroDoc.setRecordTimestamp(true);
-        loroDoc.importBatch(allUpdates);
+        loroDoc.import(decodeBase64(doc.content));
+        rows.forEach(({ updates }) => {
+          const bytes = decodeBase64(updates);
+          const decodedMessage = decode(bytes);
+          if (decodedMessage.type !== MessageType.DocUpdate) {
+            return;
+          }
+          loroDoc.importBatch(decodedMessage.updates);
+        });
 
         await tr.mutate.doc.update({
           id: this.docId,
           content: encodeBase64(loroDoc.export({ mode: 'snapshot' })),
         });
 
-        this.sql.exec(
-          `
+        // truncate doc_update table
+        this.sql.exec(`
           DELETE FROM doc_update
-        `
-        );
+        `);
       });
     }
   }

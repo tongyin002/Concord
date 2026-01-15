@@ -2,7 +2,7 @@ import { baseKeymap, toggleMark } from 'prosemirror-commands';
 import { keymap } from 'prosemirror-keymap';
 import { EditorState } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { collabCaret } from './collabCaret';
 import { loroSyncAdvanced, updateLoroDocGivenTransaction } from './loroSync';
 import { loroDocToPMDoc, pmSchema } from './loroToPm';
@@ -32,23 +32,6 @@ export const Editor = ({ docId, user, editable = true }: EditorProps) => {
   const { loroDoc, presenceStore } = useCollaborativeDoc({ docId });
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
-  const [isReady, setIsReady] = useState(false);
-
-  useEffect(() => {
-    try {
-      loroDocToPMDoc(loroDoc);
-      setIsReady(true);
-      return () => {};
-    } catch {
-      setIsReady(false);
-      const unsubscribe = loroDoc.subscribe((event) => {
-        if (event.by === 'import' || event.by === 'checkout') {
-          setIsReady(true);
-        }
-      });
-      return () => unsubscribe();
-    }
-  }, [loroDoc]);
 
   // Ref for user to avoid editor recreation if user prop changes.
   // Note: collabCaret captures this at plugin creation time.
@@ -63,7 +46,7 @@ export const Editor = ({ docId, user, editable = true }: EditorProps) => {
   // Create ProseMirror editor once loroDoc is ready
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !isReady) return;
+    if (!container || !loroDoc || !presenceStore) return;
 
     const state = EditorState.create({
       doc: loroDocToPMDoc(loroDoc),
@@ -96,7 +79,9 @@ export const Editor = ({ docId, user, editable = true }: EditorProps) => {
       view.destroy();
       viewRef.current = null;
     };
-  }, [loroDoc, presenceStore, editable, isReady]);
+    // Note: editable is intentionally excluded - it's handled dynamically via setProps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loroDoc, presenceStore]);
 
   if (!loroDoc) {
     return <div className="h-full flex items-center justify-center text-slate-400">Loading...</div>;

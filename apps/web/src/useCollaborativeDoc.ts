@@ -1,10 +1,15 @@
-import { useEffect, useMemo } from 'react';
-import { LoroDoc } from 'lib/shared';
-import { LoroAdaptor, LoroEphemeralAdaptor, LoroWebsocketClient } from 'lib/client';
+import { useEffect, useState } from 'react';
+import { decodeBase64, LoroDoc, zql } from 'lib/shared';
+import { LoroAdaptor, LoroEphemeralAdaptor, LoroWebsocketClient, useQuery } from 'lib/client';
 import { PresenceStore } from './presenceStore';
 
 interface UseCollaborativeDocOptions {
   docId: string;
+}
+
+interface LoroDocState {
+  loroDoc: LoroDoc;
+  presenceStore: PresenceStore;
 }
 
 /**
@@ -18,45 +23,64 @@ interface UseCollaborativeDocOptions {
  * - On WebSocket reconnection, one Zero import is allowed to catch up on missed updates
  */
 export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
+  const [doc] = useQuery(zql.doc.where('id', docId).one());
+  const [state, setState] = useState<LoroDocState | null>(null);
+
   // ─────────────────────────────────────────────────────────────────────────────
-  // Loro Document (memoized by docId)
+  // Loro Document & PresenceStore (with proper cleanup)
+  // Using useState + useEffect instead of useMemo to enable proper WASM cleanup.
   // ─────────────────────────────────────────────────────────────────────────────
-  const loroDoc = useMemo(() => {
-    const newDoc = new LoroDoc();
-    newDoc.configTextStyle({
+  useEffect(() => {
+    if (!doc) {
+      setState(null);
+      return;
+    }
+
+    const loroDoc = new LoroDoc();
+    loroDoc.configTextStyle({
       bold: { expand: 'none' },
       italic: { expand: 'none' },
       underline: { expand: 'none' },
     });
-    newDoc.setRecordTimestamp(true);
-    return newDoc;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [docId]); // Intentionally recreate doc when docId changes
+    loroDoc.setRecordTimestamp(true);
+    loroDoc.import(decodeBase64(doc.content));
+    loroDoc.getShallowValue();
 
-  const presenceStore = useMemo(() => {
-    return new PresenceStore(loroDoc.peerIdStr);
-  }, [loroDoc.peerIdStr]);
+    const presenceStore = new PresenceStore(loroDoc.peerIdStr);
+    setState({ loroDoc, presenceStore });
+
+    return () => {
+      loroDoc.free();
+    };
+    // Only recreate when docId changes or when doc goes from undefined to defined
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docId, doc?.content === undefined]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // WebSocket Client & Room (single effect to avoid race conditions)
   // ─────────────────────────────────────────────────────────────────────────────
   useEffect(() => {
+    if (!state) return;
+    const { loroDoc, presenceStore } = state;
+
     // Create client - it auto-connects in constructor
-    let wsClient: LoroWebsocketClient | null = new LoroWebsocketClient({
+    const wsClient = new LoroWebsocketClient({
       url: `ws://localhost:8787/ws?docId=${docId}`,
     });
 
-    // Join room after connection is established
-    wsClient.waitConnected().then(() => {
-      if (!wsClient) return;
+    const ephemeralAdaptor = new LoroEphemeralAdaptor(presenceStore);
+    const loroAdaptor = new LoroAdaptor(loroDoc);
 
-      const ephemeralAdaptor = new LoroEphemeralAdaptor(presenceStore);
+    // Join room after connection is established
+    let cancelled = false;
+    wsClient.waitConnected().then(() => {
+      if (cancelled) return;
+
       wsClient.join({
         roomId: docId,
         crdtAdaptor: ephemeralAdaptor,
       });
 
-      const loroAdaptor = new LoroAdaptor(loroDoc);
       wsClient.join({
         roomId: docId,
         crdtAdaptor: loroAdaptor,
@@ -64,10 +88,12 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
     });
 
     return () => {
-      wsClient?.destroy();
-      wsClient = null;
+      cancelled = true;
+      ephemeralAdaptor.destroy();
+      loroAdaptor.destroy();
+      wsClient.destroy();
     };
-  }, [docId, loroDoc, presenceStore]);
+  }, [docId, state]);
 
-  return { loroDoc, presenceStore };
+  return { loroDoc: state?.loroDoc ?? null, presenceStore: state?.presenceStore ?? null };
 }

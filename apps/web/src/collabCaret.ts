@@ -266,6 +266,10 @@ export function collabCaret(
 
       return {
         destroy: () => {
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+            timeoutId = null;
+          }
           store.deleteLocal();
           unsubscribe();
         },
