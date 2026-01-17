@@ -13,6 +13,8 @@ import {
 } from 'lib/server';
 import { decodeBase64, encodeBase64, LoroDoc, zql } from 'lib/shared';
 
+const DOC_SAVE_INTERVAL = 15000; // 15 seconds
+
 /**
  * Durable Object for coordinating real-time collaboration via WebSockets.
  *
@@ -37,7 +39,7 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
     // create doc_update table in sqlite with primary id auto generated, updates column with base64 encoded data
     this.sql.exec(`
         CREATE TABLE IF NOT EXISTS doc_update (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          id TEXT PRIMARY KEY,
           updates TEXT NOT NULL
         )
       `);
@@ -53,6 +55,14 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
     if (!docId) {
       return new Response('docId is required', { status: 400 });
     }
+
+    // Ensure table exists - needed after deleteAll() if DO hasn't hibernated yet
+    this.sql.exec(`
+      CREATE TABLE IF NOT EXISTS doc_update (
+        id TEXT PRIMARY KEY,
+        updates TEXT NOT NULL
+      )
+    `);
 
     const webSocketPair = new WebSocketPair();
     const { 0: client, 1: server } = webSocketPair;
@@ -179,7 +189,31 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
       return;
     }
 
+    if (decodedMessage.crdt === CrdtType.Loro) {
+      // insert updates to table doc_update
+      try {
+        const bytes = new Uint8Array(encodedMessage);
+        const id = crypto.randomUUID();
+        const base64 = encodeBase64(bytes);
+        this.sql.exec(`INSERT INTO doc_update (id, updates) VALUES (?, ?)`, id, base64);
+      } catch (error) {
+        console.error(`SQL insert error:`, error);
+      }
+
+      const existingAlarm = await this.ctx.storage.getAlarm();
+      const now = Date.now();
+      // if exisintgAlarm < now, we can assume the alarm will never
+      // go off, this happens in dev when code changes after setting an alarm
+      if (!existingAlarm || existingAlarm < now) {
+        await this.ctx.storage.setAlarm(now + DOC_SAVE_INTERVAL);
+      }
+    }
+
     this.ctx.getWebSockets().forEach((ws) => {
+      if (ws.readyState !== WebSocket.OPEN) {
+        return;
+      }
+
       if (ws !== givenWs) {
         ws.send(encodedMessage);
       } else {
@@ -194,30 +228,14 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
         );
       }
     });
-
-    if (decodedMessage.crdt === CrdtType.LoroEphemeralStore) {
-      return;
-    }
-
-    // insert updates to table doc_update
-    try {
-      const bytes = new Uint8Array(encodedMessage);
-      const base64 = encodeBase64(bytes);
-      this.sql.exec(`INSERT INTO doc_update (updates) VALUES (?)`, [base64]);
-    } catch (error) {
-      console.error(`SQL insert error:`, error);
-    }
-
-    await this.ctx.storage.setAlarm(Date.now() + 10000);
   }
 
   async alarm() {
     // read updates from table doc_update
-
     const rows = this.sql
-      .exec<{ updates: string }>(
+      .exec<{ id: string; updates: string }>(
         `
-      SELECT updates FROM doc_update
+      SELECT id, updates FROM doc_update
     `
       )
       .toArray();
@@ -255,26 +273,30 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
           content: encodeBase64(loroDoc.export({ mode: 'snapshot' })),
         });
 
-        // truncate doc_update table
-        this.sql.exec(`
-          DELETE FROM doc_update
-        `);
+        // Delete all processed rows
+        // Safe because DO is single-threaded - no new rows can arrive during alarm execution
+        this.sql.exec(`DELETE FROM doc_update`);
       });
     }
   }
 
   async webSocketClose(
-    _ws: WebSocket,
+    ws: WebSocket,
     code: number,
     reason: string,
     _wasClean: boolean
   ): Promise<void> {
     // If this was the last connection, flush immediately
-    const remainingConnections = this.ctx.getWebSockets().length;
+    // Note: The closing WebSocket is still in getWebSockets() during this callback
+    const remainingConnections = this.ctx.getWebSockets().filter((w) => w !== ws).length;
+
     if (remainingConnections === 0) {
       // Cancel any scheduled alarm and flush now
-      this.ctx.storage.deleteAlarm();
-      this.alarm();
+      this.ctx.blockConcurrencyWhile(async () => {
+        await this.ctx.storage.deleteAlarm();
+        await this.alarm();
+        await this.ctx.storage.deleteAll();
+      });
     }
   }
 

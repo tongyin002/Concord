@@ -1,6 +1,12 @@
-import { useEffect, useState } from 'react';
-import { decodeBase64, LoroDoc, zql } from 'lib/shared';
-import { LoroAdaptor, LoroEphemeralAdaptor, LoroWebsocketClient, useQuery } from 'lib/client';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { decodeBase64, LoroDoc, queries } from 'lib/shared';
+import {
+  LoroAdaptor,
+  LoroEphemeralAdaptor,
+  LoroWebsocketClient,
+  RoomJoinStatus,
+  useQuery,
+} from 'lib/client';
 import { PresenceStore } from './presenceStore';
 
 interface UseCollaborativeDocOptions {
@@ -20,11 +26,17 @@ interface LoroDocState {
  * - WebSocket provides real-time updates between peers
  * - Zero persists to database every ~20s and syncs back
  * - When WebSocket is delivering updates, Zero imports are skipped (redundant)
- * - On WebSocket reconnection, one Zero import is allowed to catch up on missed updates
+ * - On WebSocket reconnection, imports latest doc.content from Zero to catch up on missed updates
+ *   (Loro CRDT handles deduplication - already-seen ops are no-ops)
  */
 export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
-  const [doc] = useQuery(zql.doc.where('id', docId).one());
+  const [doc] = useQuery(queries.doc.byId({ id: docId }));
   const [state, setState] = useState<LoroDocState | null>(null);
+
+  // Store latest doc.content in a ref so the catch-up callback can access it
+  // without needing it in dependencies (which would cause re-renders)
+  const docContentRef = useRef(doc?.content);
+  docContentRef.current = doc?.content;
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Loro Document & PresenceStore (with proper cleanup)
@@ -57,6 +69,15 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
   }, [docId, doc?.content === undefined]);
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // Catch-up import: Called when reconnected after disconnect
+  // Loro CRDT automatically deduplicates - already-seen ops are no-ops
+  // ─────────────────────────────────────────────────────────────────────────────
+  const catchUpFromZero = useCallback(() => {
+    if (!state || !docContentRef.current) return;
+    state.loroDoc.import(decodeBase64(docContentRef.current));
+  }, [state]);
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // WebSocket Client & Room (single effect to avoid race conditions)
   // ─────────────────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -71,6 +92,9 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
     const ephemeralAdaptor = new LoroEphemeralAdaptor(presenceStore);
     const loroAdaptor = new LoroAdaptor(loroDoc);
 
+    // Track if we were previously reconnecting to trigger catch-up
+    let wasReconnecting = false;
+
     // Join room after connection is established
     let cancelled = false;
     wsClient.waitConnected().then(() => {
@@ -84,6 +108,16 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
       wsClient.join({
         roomId: docId,
         crdtAdaptor: loroAdaptor,
+        onStatusChange: (status) => {
+          if (status === RoomJoinStatus.Reconnecting) {
+            wasReconnecting = true;
+          } else if (status === RoomJoinStatus.Joined && wasReconnecting) {
+            // Reconnected after being disconnected - import latest from Zero
+            // Loro CRDT handles deduplication - already-seen ops are no-ops
+            wasReconnecting = false;
+            catchUpFromZero();
+          }
+        },
       });
     });
 
@@ -93,7 +127,7 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
       loroAdaptor.destroy();
       wsClient.destroy();
     };
-  }, [docId, state]);
+  }, [docId, state, catchUpFromZero]);
 
   return { loroDoc: state?.loroDoc ?? null, presenceStore: state?.presenceStore ?? null };
 }
