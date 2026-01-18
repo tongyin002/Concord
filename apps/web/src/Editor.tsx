@@ -46,7 +46,7 @@ export const Editor = ({ docId, user, editable = true }: EditorProps) => {
   // Create ProseMirror editor once loroDoc is ready
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !loroDoc || !presenceStore) return;
+    if (!container || !loroDoc) return;
 
     const state = EditorState.create({
       doc: loroDocToPMDoc(loroDoc),
