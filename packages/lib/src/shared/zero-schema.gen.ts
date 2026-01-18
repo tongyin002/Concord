@@ -137,24 +137,18 @@ export type Schema = typeof schema;
 /**
  * Represents a row from the "account" table.
  * This type is auto-generated from your Drizzle schema definition.
- *
- * @deprecated Use Row["account"] instead from "@rocicorp/zero".
  */
-export type Account = Row['account'];
+export type Account = Row<(typeof schema)['tables']['account']>;
 /**
  * Represents a row from the "doc" table.
  * This type is auto-generated from your Drizzle schema definition.
- *
- * @deprecated Use Row["doc"] instead from "@rocicorp/zero".
  */
-export type Doc = Row['doc'];
+export type Doc = Row<(typeof schema)['tables']['doc']>;
 /**
  * Represents a row from the "user" table.
  * This type is auto-generated from your Drizzle schema definition.
- *
- * @deprecated Use Row["user"] instead from "@rocicorp/zero".
  */
-export type User = Row['user'];
+export type User = Row<(typeof schema)['tables']['user']>;
 
 /**
  * Represents the ZQL query builder.
@@ -164,8 +158,6 @@ export const zql = createBuilder(schema);
 /**
  * Represents the Zero schema query builder.
  * This type is auto-generated from your Drizzle schema definition.
- *
- * @deprecated Use `zql` instead.
  */
 export const builder = zql;
 

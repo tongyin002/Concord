@@ -14,7 +14,7 @@
     "simulate:auth": "tsx scripts/simulate-editing.ts --auth"
   },
   "dependencies": {
-    "@base-ui/react": "^1.0.0",
+    "@base-ui/react": "^1.1.0",
     "lib": "workspace:*",
     "nanoid": "^5.1.6",
     "prosemirror-commands": "^1.7.1",
@@ -22,7 +22,7 @@
     "prosemirror-model": "^1.25.4",
     "prosemirror-state": "^1.4.4",
     "prosemirror-transform": "^1.10.5",
-    "prosemirror-view": "^1.41.4",
+    "prosemirror-view": "^1.41.5",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "tailwindcss": "^4.1.18"
