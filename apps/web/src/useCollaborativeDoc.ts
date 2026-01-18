@@ -35,7 +35,6 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
   }, [docId]);
 
   const isValidLoroDoc = useMemo(() => {
-    if (!loroDoc) return false;
     if (doc?.content) {
       loroDoc.import(decodeBase64(doc.content));
     }
