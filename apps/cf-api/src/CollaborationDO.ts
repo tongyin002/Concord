@@ -36,11 +36,11 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
     this.sql = ctx.storage.sql;
     this.kv = ctx.storage.kv;
 
-    // create doc_update table in sqlite with primary id auto generated, updates column with base64 encoded data
+    // create doc_update table in sqlite with primary id auto generated, updates column with binary data
     this.sql.exec(`
         CREATE TABLE IF NOT EXISTS doc_update (
           id TEXT PRIMARY KEY,
-          updates TEXT NOT NULL
+          updates BLOB NOT NULL
         )
       `);
   }
@@ -60,7 +60,7 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
     this.sql.exec(`
       CREATE TABLE IF NOT EXISTS doc_update (
         id TEXT PRIMARY KEY,
-        updates TEXT NOT NULL
+        updates BLOB NOT NULL
       )
     `);
 
@@ -158,7 +158,7 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
     );
 
     const rows = this.sql
-      .exec<{ updates: string }>(
+      .exec<{ updates: ArrayBuffer }>(
         `
       SELECT updates FROM doc_update
     `
@@ -166,8 +166,7 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
       .toArray();
 
     rows.forEach(({ updates }) => {
-      const bytes = decodeBase64(updates);
-      ws.send(bytes);
+      ws.send(updates);
     });
   }
 
@@ -194,8 +193,7 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
       try {
         const bytes = new Uint8Array(encodedMessage);
         const id = crypto.randomUUID();
-        const base64 = encodeBase64(bytes);
-        this.sql.exec(`INSERT INTO doc_update (id, updates) VALUES (?, ?)`, id, base64);
+        this.sql.exec(`INSERT INTO doc_update (id, updates) VALUES (?, ?)`, id, bytes);
       } catch (error) {
         console.error(`SQL insert error:`, error);
       }
@@ -233,7 +231,7 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
   async alarm() {
     // read updates from table doc_update
     const rows = this.sql
-      .exec<{ id: string; updates: string }>(
+      .exec<{ id: string; updates: ArrayBuffer }>(
         `
       SELECT id, updates FROM doc_update
     `
@@ -260,8 +258,7 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
         loroDoc.setRecordTimestamp(true);
         loroDoc.import(decodeBase64(doc.content));
         rows.forEach(({ updates }) => {
-          const bytes = decodeBase64(updates);
-          const decodedMessage = decode(bytes);
+          const decodedMessage = decode(new Uint8Array(updates));
           if (decodedMessage.type !== MessageType.DocUpdate) {
             return;
           }
