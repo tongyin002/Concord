@@ -15,7 +15,8 @@
     "dev": "pnpm exec zero-cache-dev",
     "lint": "oxlint --type-aware",
     "generate": "drizzle-zero generate --format --output ./src/shared/zero-schema.gen.ts",
-    "postinstall": "pnpm run generate"
+    "postinstall": "pnpm run generate",
+    "seed:pg-essays": "tsx scripts/seed-pg-essays.ts"
   },
   "dependencies": {
     "@rocicorp/zero": "^0.25.9",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@types/pg": "^8.16.0",
+    "cheerio": "^1.1.2",
     "drizzle-kit": "^0.31.8",
     "drizzle-zero": "^0.17.2",
     "tsx": "^4.21.0"
