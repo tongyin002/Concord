@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { pgTable, text, timestamp, boolean, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, index, uuid } from 'drizzle-orm/pg-core';
 
 // Auth schema
 export const user = pgTable('user', {
@@ -94,7 +94,7 @@ export const accountRelations = relations(account, ({ one }) => ({
 }));
 
 export const doc = pgTable('doc', {
-  id: text('id').primaryKey(),
+  id: uuid('id').primaryKey(),
   title: text('title').notNull(),
   content: text('content').notNull(),
   ownerId: text('owner_id')
