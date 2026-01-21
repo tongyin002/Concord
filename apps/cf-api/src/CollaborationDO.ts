@@ -255,7 +255,6 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
           italic: { expand: 'none' },
           underline: { expand: 'none' },
         });
-        loroDoc.setRecordTimestamp(true);
         loroDoc.import(decodeBase64(doc.content));
         rows.forEach(({ updates }) => {
           const decodedMessage = decode(new Uint8Array(updates));

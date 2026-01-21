@@ -1,6 +1,14 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery, useZero } from 'lib/client';
-import { queries, mutators, LoroDoc, LoroMap, LoroMovableList, LoroText } from 'lib/shared';
+import {
+  queries,
+  mutators,
+  LoroDoc,
+  LoroMap,
+  LoroMovableList,
+  LoroText,
+  encodeBase64,
+} from 'lib/shared';
 import { Dialog } from '@base-ui/react/dialog';
 import { Avatar } from '@base-ui/react/avatar';
 import { Input } from '@base-ui/react/input';
@@ -47,7 +55,7 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
       mutators.doc.create({
         id: crypto.randomUUID(),
         title,
-        content: btoa(String.fromCharCode(...snapshot)),
+        content: encodeBase64(snapshot),
       })
     );
   }, [title, zero]);
