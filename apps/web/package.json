@@ -16,7 +16,6 @@
   "dependencies": {
     "@base-ui/react": "^1.1.0",
     "lib": "workspace:*",
-    "nanoid": "^5.1.6",
     "prosemirror-commands": "^1.7.1",
     "prosemirror-keymap": "^1.2.3",
     "prosemirror-model": "^1.25.4",
@@ -25,7 +24,8 @@
     "prosemirror-view": "^1.41.5",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "tailwindcss": "^4.1.18"
+    "tailwindcss": "^4.1.18",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",

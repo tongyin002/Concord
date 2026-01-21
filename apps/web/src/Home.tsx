@@ -15,6 +15,7 @@ import { Input } from '@base-ui/react/input';
 import { useDocIdFromUrl } from './useDocIdFromUrl';
 import { Editor } from './Editor';
 import { DocumentListItem } from './DocumentListItem';
+import { v7 as uuidv7 } from 'uuid';
 
 const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
   const zero = useZero();
@@ -53,7 +54,7 @@ const HomePage = ({ onSignOut }: { onSignOut: () => void }) => {
 
     zero.mutate(
       mutators.doc.create({
-        id: crypto.randomUUID(),
+        id: uuidv7(),
         title,
         content: encodeBase64(snapshot),
       })
