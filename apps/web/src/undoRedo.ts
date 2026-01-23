@@ -5,6 +5,7 @@ import {
   Plugin,
   PluginKey,
   TextSelection,
+  Selection,
 } from 'prosemirror-state';
 import { LoroDoc, UndoManager } from 'lib/shared';
 import { getLoroCursorFromPMPosition, getPMPositionFromLoroCursor } from './collabCaret';
@@ -59,25 +60,40 @@ export function undoRedo(loroDoc: LoroDoc) {
           return;
         }
         const [anchorCursor, headCursor] = cursors;
-        const anchorPosition = getPMPositionFromLoroCursor(anchorCursor, loroDoc, view.state);
-        const headPosition = getPMPositionFromLoroCursor(headCursor, loroDoc, view.state);
 
-        // Free cursors after use to prevent memory leaks
-        anchorCursor?.free();
-        headCursor?.free();
+        // Defer selection restoration to allow loroSync to update the view first.
+        // When undo/redo fires, setOnPop is called before the loroSync plugin
+        // dispatches the transaction to update ProseMirror. We use setTimeout(0)
+        // to ensure the view state is synced before we try to resolve positions.
+        // Note: queueMicrotask doesn't work here - the sync dispatch happens later.
+        setTimeout(() => {
+          const anchorPosition = getPMPositionFromLoroCursor(anchorCursor, loroDoc, view.state);
+          const headPosition = getPMPositionFromLoroCursor(headCursor, loroDoc, view.state);
 
-        if (anchorPosition === null || headPosition === null) return;
+          // Free cursors after use to prevent memory leaks
+          anchorCursor?.free();
+          headCursor?.free();
 
-        if (anchorPosition === 0 && headPosition === view.state.doc.nodeSize) {
-          view.dispatch(view.state.tr.setSelection(new AllSelection(view.state.doc)));
-          return;
-        }
+          if (anchorPosition === null || headPosition === null) return;
 
-        const $anchorPosition = view.state.doc.resolve(anchorPosition);
-        const $headPosition = view.state.doc.resolve(headPosition);
-        view.dispatch(
-          view.state.tr.setSelection(new TextSelection($anchorPosition, $headPosition))
-        );
+          if (anchorPosition === 0 && headPosition === view.state.doc.nodeSize) {
+            view.dispatch(view.state.tr.setSelection(new AllSelection(view.state.doc)));
+            return;
+          }
+
+          let selection: Selection;
+          if (
+            anchorPosition + headPosition === view.state.doc.nodeSize &&
+            (anchorPosition === 1 || headPosition === 1)
+          ) {
+            selection = new AllSelection(view.state.doc);
+          } else {
+            const $anchorPosition = view.state.doc.resolve(anchorPosition);
+            const $headPosition = view.state.doc.resolve(headPosition);
+            selection = new TextSelection($anchorPosition, $headPosition);
+          }
+          view.dispatch(view.state.tr.setSelection(selection));
+        }, 0);
       });
       return {};
     },

@@ -451,7 +451,9 @@ export function loroSyncAdvanced(loroDoc: LoroDoc, pmSchema: Schema) {
 
           if (diff.type === 'list') {
             let index = 0;
-            diff.diff.forEach((delta) => {
+
+            for (let deltaIdx = 0; deltaIdx < diff.diff.length; deltaIdx++) {
+              const delta = diff.diff[deltaIdx];
               if (delta.insert) {
                 const paragraphs = delta.insert
                   .map((insert) => {
@@ -476,12 +478,31 @@ export function loroSyncAdvanced(loroDoc: LoroDoc, pmSchema: Schema) {
                   .slice(startingStepIndex)
                   .map(pos + Fragment.fromArray(node.children.slice(0, index + delta.delete)).size);
 
-                tr.delete(start, end);
+                const nextDelta = diff.diff[deltaIdx + 1];
+                // if the next delta is an insert, we need to 'replace'
+                // because pm would auto insert a paragraph if we delete the last paragraph
+                // due to our schema enforce at least one paragraph
+                if (nextDelta?.insert) {
+                  const paragraphs = nextDelta.insert
+                    .map((insert) => {
+                      if (isContainer(insert) && isLoroParagraph(insert)) {
+                        return pmSchema.node('paragraph', {
+                          [LORO_ID_ATTR]: insert.id,
+                        });
+                      }
+                      return null;
+                    })
+                    .filter(Boolean) as Node[];
+                  tr.replaceWith(start, end, paragraphs);
+                  deltaIdx++;
+                } else {
+                  tr.delete(start, end);
+                }
                 index += delta.delete;
               } else if (delta.retain) {
                 index += delta.retain;
               }
-            });
+            }
           }
 
           if (diff.type === 'text') {

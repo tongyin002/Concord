@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { pgTable, text, timestamp, boolean, index, uuid } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, index, uuid, primaryKey } from 'drizzle-orm/pg-core';
 
 // Auth schema
 export const user = pgTable('user', {
@@ -102,9 +102,29 @@ export const doc = pgTable('doc', {
     .references(() => user.id, { onDelete: 'cascade' }),
 });
 
-export const docRelations = relations(doc, ({ one }) => ({
+export const node = pgTable(
+  'node',
+  {
+    docId: uuid('doc_id')
+      .notNull()
+      .references(() => doc.id, { onDelete: 'cascade' }),
+    loroId: text('loro_id').notNull(),
+    text: text('text').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.docId, table.loroId] })]
+);
+
+export const nodeRelations = relations(node, ({ one }) => ({
+  doc: one(doc, {
+    fields: [node.docId],
+    references: [doc.id],
+  }),
+}));
+
+export const docRelations = relations(doc, ({ one, many }) => ({
   owner: one(user, {
     fields: [doc.ownerId],
     references: [user.id],
   }),
+  nodes: many(node),
 }));

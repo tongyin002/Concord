@@ -50,6 +50,13 @@
       "when": 1768969031506,
       "tag": "0006_messy_saracen",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1768969908943,
+      "tag": "0007_fixed_stingray",
+      "breakpoints": true
     }
   ]
 }
