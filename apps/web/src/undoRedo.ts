@@ -5,7 +5,6 @@ import {
   Plugin,
   PluginKey,
   TextSelection,
-  Selection,
 } from 'prosemirror-state';
 import { LoroDoc, UndoManager } from 'lib/shared';
 import { getLoroCursorFromPMPosition, getPMPositionFromLoroCursor } from './collabCaret';
@@ -66,36 +65,36 @@ export function undoRedo(loroDoc: LoroDoc) {
         // dispatches the transaction to update ProseMirror. We use setTimeout(0)
         // to ensure the view state is synced before we try to resolve positions.
         // Note: queueMicrotask doesn't work here - the sync dispatch happens later.
-        setTimeout(() => {
-          const anchorPosition = getPMPositionFromLoroCursor(anchorCursor, loroDoc, view.state);
-          const headPosition = getPMPositionFromLoroCursor(headCursor, loroDoc, view.state);
 
-          // Free cursors after use to prevent memory leaks
-          anchorCursor?.free();
-          headCursor?.free();
+        const anchorPosition = getPMPositionFromLoroCursor(anchorCursor, loroDoc, view.state);
+        const headPosition = getPMPositionFromLoroCursor(headCursor, loroDoc, view.state);
 
-          if (anchorPosition === null || headPosition === null) return;
+        // Free cursors after use to prevent memory leaks
+        anchorCursor?.free();
+        headCursor?.free();
 
-          if (anchorPosition === 0 && headPosition === view.state.doc.nodeSize) {
-            view.dispatch(view.state.tr.setSelection(new AllSelection(view.state.doc)));
-            return;
-          }
+        if (anchorPosition === null || headPosition === null) return;
 
-          let selection: Selection;
-          if (
-            anchorPosition + headPosition === view.state.doc.nodeSize &&
-            (anchorPosition === 1 || headPosition === 1)
-          ) {
-            selection = new AllSelection(view.state.doc);
-          } else {
-            const $anchorPosition = view.state.doc.resolve(anchorPosition);
-            const $headPosition = view.state.doc.resolve(headPosition);
-            selection = new TextSelection($anchorPosition, $headPosition);
-          }
+        const shouldSelectAll =
+          anchorPosition + headPosition === view.state.doc.nodeSize &&
+          (anchorPosition === 1 || headPosition === 1);
+
+        if (shouldSelectAll) {
+          view.dispatch(view.state.tr.setSelection(new AllSelection(view.state.doc)));
+        } else {
+          const $anchorPosition = view.state.doc.resolve(anchorPosition);
+          const $headPosition = view.state.doc.resolve(headPosition);
+          const selection = new TextSelection($anchorPosition, $headPosition);
           view.dispatch(view.state.tr.setSelection(selection));
-        }, 0);
+        }
       });
-      return {};
+      return {
+        destroy() {
+          undoManager.setOnPush(undefined);
+          undoManager.setOnPop(undefined);
+          undoManager.free();
+        },
+      };
     },
   });
 }

@@ -19,8 +19,7 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
   const [doc] = useQuery(queries.doc.byId({ id: docId }));
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Loro Document & PresenceStore (with proper cleanup)
-  // Using useState + useEffect instead of useMemo to enable proper WASM cleanup.
+  // Loro Document & PresenceStore
   // ─────────────────────────────────────────────────────────────────────────────
   const { loroDoc, presenceStore } = useMemo(() => {
     const newDoc = new LoroDoc();
@@ -71,6 +70,7 @@ export function useCollaborativeDoc({ docId }: UseCollaborativeDocOptions) {
 
     return () => {
       cancelled = true;
+      presenceStore.destroy();
       ephemeralAdaptor.destroy();
       loroAdaptor.destroy();
       wsClient.destroy();
