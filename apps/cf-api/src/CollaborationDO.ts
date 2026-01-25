@@ -230,55 +230,52 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
 
   async alarm() {
     // read updates from table doc_update
-    const rows = this.sql
-      .exec<{ id: string; updates: ArrayBuffer }>(
-        `
+    return this.ctx.blockConcurrencyWhile(async () => {
+      const rows = this.sql
+        .exec<{ id: string; updates: ArrayBuffer }>(
+          `
       SELECT id, updates FROM doc_update
     `
-      )
-      .toArray();
+        )
+        .toArray();
 
-    if (rows.length > 0) {
-      const db = createDB(this.env.HYPERDRIVE);
-      const zeroDBProvider = createZeroDBProvider(db);
+      if (rows.length > 0) {
+        const db = createDB(this.env.HYPERDRIVE);
+        const zeroDBProvider = createZeroDBProvider(db);
 
-      await zeroDBProvider.transaction(async (tr) => {
-        const doc = await tr.run(zql.doc.where('id', this.docId).one());
-        if (!doc) {
-          // doc not found, likely deleted
-          return;
-        }
-
-        const loroDoc = new LoroDoc();
-        loroDoc.configTextStyle({
-          bold: { expand: 'none' },
-          italic: { expand: 'none' },
-          underline: { expand: 'none' },
-        });
-        loroDoc.import(decodeBase64(doc.content));
-        const appliedIds: string[] = [];
-        rows.forEach(({ id, updates }) => {
-          const decodedMessage = decode(new Uint8Array(updates));
-          if (decodedMessage.type !== MessageType.DocUpdate) {
+        await zeroDBProvider.transaction(async (tr) => {
+          const doc = await tr.run(zql.doc.where('id', this.docId).one());
+          if (!doc) {
+            // doc not found, likely deleted
             return;
           }
 
-          loroDoc.importBatch(decodedMessage.updates);
-          appliedIds.push(id);
-        });
+          const loroDoc = new LoroDoc();
+          loroDoc.configTextStyle({
+            bold: { expand: 'none' },
+            italic: { expand: 'none' },
+            underline: { expand: 'none' },
+          });
+          loroDoc.import(decodeBase64(doc.content));
 
-        await tr.mutate.doc.update({
-          id: this.docId,
-          content: encodeBase64(loroDoc.export({ mode: 'snapshot' })),
-        });
+          rows.forEach(({ updates }) => {
+            const decodedMessage = decode(new Uint8Array(updates));
+            if (decodedMessage.type !== MessageType.DocUpdate) {
+              return;
+            }
 
-        if (appliedIds.length > 0) {
-          // Delete only updates that were successfully applied
-          const placeholders = appliedIds.map(() => '?').join(', ');
-          this.sql.exec(`DELETE FROM doc_update WHERE id IN (${placeholders})`, ...appliedIds);
-        }
-      });
-    }
+            loroDoc.importBatch(decodedMessage.updates);
+          });
+
+          await tr.mutate.doc.update({
+            id: this.docId,
+            content: encodeBase64(loroDoc.export({ mode: 'snapshot' })),
+          });
+
+          this.sql.exec(`DELETE FROM doc_update`);
+        });
+      }
+    });
   }
 
   async webSocketClose(
@@ -293,7 +290,7 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
 
     if (remainingConnections === 0) {
       // Cancel any scheduled alarm and flush now
-      this.ctx.blockConcurrencyWhile(async () => {
+      return this.ctx.blockConcurrencyWhile(async () => {
         await this.ctx.storage.deleteAlarm();
         await this.alarm();
         await this.ctx.storage.deleteAll();
