@@ -23,7 +23,7 @@
     "better-auth": "^1.4.14",
     "drizzle-orm": "^0.45.1",
     "loro-adaptors": "^0.6.1",
-    "loro-crdt": "^1.10.4",
+    "loro-crdt": "^1.10.5",
     "loro-protocol": "^0.3.0",
     "loro-websocket": "^0.6.2",
     "pg": "^8.17.1",
@@ -33,7 +33,7 @@
     "@types/pg": "^8.16.0",
     "cheerio": "^1.1.2",
     "drizzle-kit": "^0.31.8",
-    "drizzle-zero": "^0.17.2",
+    "drizzle-zero": "^0.17.3",
     "tsx": "^4.21.0"
   }
 }

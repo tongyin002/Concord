@@ -256,12 +256,15 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
           underline: { expand: 'none' },
         });
         loroDoc.import(decodeBase64(doc.content));
-        rows.forEach(({ updates }) => {
+        const appliedIds: string[] = [];
+        rows.forEach(({ id, updates }) => {
           const decodedMessage = decode(new Uint8Array(updates));
           if (decodedMessage.type !== MessageType.DocUpdate) {
             return;
           }
+
           loroDoc.importBatch(decodedMessage.updates);
+          appliedIds.push(id);
         });
 
         await tr.mutate.doc.update({
@@ -269,9 +272,11 @@ export class CollaborationDO extends DurableObject<CloudflareBindings> {
           content: encodeBase64(loroDoc.export({ mode: 'snapshot' })),
         });
 
-        // Delete all processed rows
-        // Safe because DO is single-threaded - no new rows can arrive during alarm execution
-        this.sql.exec(`DELETE FROM doc_update`);
+        if (appliedIds.length > 0) {
+          // Delete only updates that were successfully applied
+          const placeholders = appliedIds.map(() => '?').join(', ');
+          this.sql.exec(`DELETE FROM doc_update WHERE id IN (${placeholders})`, ...appliedIds);
+        }
       });
     }
   }
